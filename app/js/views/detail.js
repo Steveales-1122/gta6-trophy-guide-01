@@ -55,6 +55,22 @@ function render() {
   });
   panel.append(toggle);
 
+  // Copy a one-line summary (name, grade, description) to the clipboard,
+  // handy for pasting into a note or a message about this trophy.
+  const copy = el('button', '', 'Copy trophy summary');
+  copy.type = 'button';
+  copy.addEventListener('click', async () => {
+    const summary = `${t.name} — ${gradeLabel(t.grade)} · ${t.description}`;
+    try {
+      await navigator.clipboard.writeText(summary);
+      copy.textContent = 'Copied ✓';
+      setTimeout(() => { copy.textContent = 'Copy trophy summary'; }, 1500);
+    } catch {
+      copy.textContent = 'Copy failed — select the text above';
+    }
+  });
+  panel.append(copy);
+
   if (isSpoiled(t, s, store.earned)) {
     panel.append(el('p', 'guide-text spoiled', 'Spoilers are on and this story trophy is still hidden. Earn it in the game, or turn spoilers off in Settings, to read the guide.'));
   } else {

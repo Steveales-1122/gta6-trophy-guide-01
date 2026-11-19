@@ -44,3 +44,15 @@ export function nextUp(trophies, earned, limit = 10) {
     .sort((a, b) => a.stage - b.stage || a.id - b.id)
     .slice(0, limit);
 }
+
+// Quick filter helper for the toolbar: the unearned trophies only, in
+// checklist order, ignoring every other filter setting.
+export function unearnedOnly(trophies, earned) {
+  return trophies.filter((t) => !earned.has(t.name));
+}
+
+// The share of the set earned so far, as a whole percent (0–100).
+export function earnedPercent(trophies, earned) {
+  if (!trophies.length) return 0;
+  return Math.round((earned.size / trophies.length) * 100);
+}

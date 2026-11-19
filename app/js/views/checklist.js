@@ -73,9 +73,17 @@ export function renderChecklist(view, data) {
   missable.setAttribute('aria-pressed', String(s.missableOnly));
   missable.addEventListener('click', () => { s.missableOnly = !s.missableOnly; store.save(); renderChecklist(view, data); });
   toolbar.append(missable);
+
+  // Collapse earned: hide the rows already ticked, so the remaining list
+  // is all that is left to do. The setting is kept for this session only.
+  const collapse = el('button', 'chip', s.collapseEarned ? 'Show earned rows' : 'Collapse earned');
+  collapse.type = 'button';
+  collapse.setAttribute('aria-pressed', String(!!s.collapseEarned));
+  collapse.addEventListener('click', () => { s.collapseEarned = !s.collapseEarned; store.save(); renderChecklist(view, data); });
+  toolbar.append(collapse);
   view.append(toolbar);
 
-  const shown = filterTrophies(trophies, s, store.earned);
+  const shown = filterTrophies(trophies, s, store.earned).filter((t) => !(s.collapseEarned && store.earned.has(t.name)));
   const earnedShown = shown.filter((t) => store.earned.has(t.name)).length;
   view.append(el('p', 'count-line', `Showing ${shown.length} of ${trophies.length} trophies · ${earnedShown} earned in this view`));
 

@@ -21,6 +21,10 @@ export function renderRoadmap(view, data) {
     const block = el('section', 'stage-block');
     block.append(el('h2', '', `Stage ${stage.n} — ${stage.title}`));
     block.append(el('p', 'stage-note', `${stage.note} (${done} of ${members.length} earned)`));
+    // A one-word completion label beside the count, so the stage's state
+    // reads at a glance without opening it.
+    const label = members.length === 0 ? '—' : done === 0 ? 'Not started' : done === members.length ? 'Complete' : 'In progress';
+    block.append(el('p', 'stage-note', `Status: ${label}.`));
     const bar = el('div', 'progress-bar');
     const fill = el('div', 'progress-fill');
     fill.style.width = `${members.length ? (done / members.length) * 100 : 0}%`;

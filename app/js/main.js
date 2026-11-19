@@ -7,6 +7,9 @@ import { renderRoadmap } from './views/roadmap.js';
 import { renderMissables } from './views/missables.js';
 import { renderPlanner } from './views/planner.js';
 import { renderSettings } from './views/settings.js';
+import { renderStats } from './views/stats.js';
+import { renderPicker } from './views/picker.js';
+import { initShortcuts } from './keys.js';
 import { openDetail, closeDetail } from './views/detail.js';
 
 const view = document.getElementById('view');
@@ -42,6 +45,18 @@ function setActiveTab(tab) {
   for (const a of document.querySelectorAll('.tabs a')) {
     a.classList.toggle('active', a.dataset.tab === tab);
   }
+  // Keep the tab title in step with the view, so a bookmarked or shared
+  // hash still says which section of the guide it opens.
+  const labels = {
+    checklist: 'Checklist',
+    roadmap: 'Roadmap',
+    missables: 'Missables',
+    next: 'Next up',
+    stats: 'Stats',
+    picker: 'Surprise me',
+    settings: 'Settings & save',
+  };
+  document.title = `${labels[tab] ?? 'Checklist'} — Sunset Platinum · GTA VI Trophy Guide`;
 }
 
 function route(data) {
@@ -62,6 +77,8 @@ function route(data) {
   if (tab === 'roadmap') renderRoadmap(view, data);
   else if (tab === 'missables') renderMissables(view, data);
   else if (tab === 'next') renderPlanner(view, data);
+  else if (tab === 'stats') renderStats(view, data);
+  else if (tab === 'picker') renderPicker(view, data);
   else if (tab === 'settings') renderSettings(view, data);
   else renderChecklist(view, data);
 }
@@ -69,6 +86,7 @@ function route(data) {
 const data = await loadTrophies();
 applyTheme();
 renderProgress(data);
+initShortcuts(data);
 route(data);
 window.addEventListener('hashchange', () => route(data));
 document.addEventListener('progress-changed', () => renderProgress(data));

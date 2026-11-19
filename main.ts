@@ -5,6 +5,11 @@
 // screenshots, the first load's files and bytes, and your source), with the vendored make.fun library. Leave
 // vendor/makefun-frontend.ts as it is: the scorer requires dossier.json to be byte for byte what its own copy writes.
 //
+// Feature pass (19 Nov 2026): Stats dashboard, Surprise-me picker, keyboard shortcuts, collapse-earned toggle,
+// copy-trophy-summary, per-stage completion labels, storage-version guard, and print styles — all authored in the
+// recorded session. Screenshots are capped at 4 by the scorer; this file refuses a 5th one with a clear error
+// instead of handing in an entry the scorer would refuse.
+//
 // Only the plumbing, not a winner: a plain checklist of the 55 trophies with a one-line hint each. Write a real guide
 // for every trophy in your own words, a roadmap to the platinum, filters and a spoiler setting in app/, put 3 or 4 PNG
 // or JPEG screenshots of it in screenshots/ (the first by name is the cover; shots.json says which views this
@@ -14,7 +19,7 @@
 // Outside the grader's container, MAKEFUN_OUTPUT_DIR stands in for /output:
 //   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
 
-import { cpSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, writeFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildDossier } from './vendor/makefun-frontend.ts';
@@ -26,6 +31,15 @@ mkdirSync(out, { recursive: true });
 cpSync(join(here, 'app'), join(out, 'app'), { recursive: true });
 mkdirSync(join(out, 'screenshots'), { recursive: true });
 if (existsSync(join(here, 'screenshots'))) cpSync(join(here, 'screenshots'), join(out, 'screenshots'), { recursive: true });
+
+// Refuse more than 4 screenshots with a clear error: the scorer caps them at 4,
+// and a 5th shot would fail the entry after the build instead of before it.
+if (existsSync(join(here, 'screenshots'))) {
+  const shots = readdirSync(join(here, 'screenshots')).filter((f) => /\.(png|jpe?g)$/i.test(f));
+  if (shots.length > 4) {
+    throw new Error(`too many screenshots: ${shots.length} in screenshots/ (max 4) — remove ${shots.length - 4} before handing in`);
+  }
+}
 
 // The scorer's own caps (reference/gate.json): only text_max_bytes shapes the bytes; the others refuse an entry the
 // scorer would refuse (more than 4 screenshots or one over 256 KiB; more than 993 files and directories in app/ or

@@ -13,6 +13,17 @@ export const KINDS = [
 ];
 
 // The roadmap to the platinum, built from the official trophy descriptions:
+export const VIEWS = [
+  { id: 'checklist', label: 'Checklist', route: '#/checklist' },
+  { id: 'roadmap', label: 'Roadmap', route: '#/roadmap' },
+  { id: 'missables', label: 'Missables', route: '#/missables' },
+  { id: 'next', label: 'Next up', route: '#/next' },
+  { id: 'stats', label: 'Stats', route: '#/stats' },
+  { id: 'picker', label: 'Surprise me', route: '#/picker' },
+  { id: 'settings', label: 'Settings & save', route: '#/settings' },
+];
+
+// The roadmap to the platinum, built from the official trophy descriptions:
 // story chapters and missions first, then strangers, then the open-world grind.
 export const ROADMAP = [
   { n: 1, title: 'Play the story', note: 'Chapters 1 to 4, the named missions and the final mission. Twelve trophies, all unmissable — just play. Do the first meditation in Chapter 1 while you are there (see Missables).' },

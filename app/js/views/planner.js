@@ -19,6 +19,11 @@ export function renderPlanner(view, data) {
     return;
   }
   view.append(el('p', 'count-line', 'Your next ten, in roadmap order. Story trophies come first because they are unmissable and unlock the rest of the game.'));
+  // Rough time hint: story wins are quick, the grind stages are not.
+  // These are our own estimates, not PlayStation figures.
+  const grindStages = new Set([4, 5, 8]);
+  const quick = upcoming.filter((t) => !grindStages.has(t.stage)).length;
+  view.append(el('p', 'count-line', `${quick} of these ten are quick wins (story or try-it-once trophies); ${upcoming.length - quick} sit in the longer grind stages — races, collections and the long tail.`));
   const list = el('ol', 'next-list');
   upcoming.forEach((t, i) => {
     const li = document.createElement('li');

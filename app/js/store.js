@@ -19,6 +19,17 @@ function writeJson(key, value) {
   }
 }
 
+// Storage version guard: an export from a newer app version is refused
+// rather than silently mangled, and a version-0 payload (no version field)
+// is treated as the current format.
+export const EXPORT_VERSION = 1;
+
+export function exportVersionOk(data) {
+  if (!data || typeof data !== 'object') return false;
+  if (data.version === undefined) return true;
+  return data.version === EXPORT_VERSION;
+}
+
 export const store = {
   earned: new Set(readJson(STORAGE_KEY, []).filter((n) => typeof n === 'string')),
   notes: readJson(STORAGE_KEY + '-notes', {}),
@@ -66,6 +77,7 @@ export const store = {
   // Import: keep only names the official list holds; ignore anything else.
   importData(data, knownNames) {
     if (!data || !Array.isArray(data.earned)) throw new Error('not a Sunset Platinum export');
+    if (!exportVersionOk(data)) throw new Error('export is from a newer version of this guide');
     const known = new Set(knownNames);
     const earned = data.earned.filter((n) => typeof n === 'string' && known.has(n));
     this.earned = new Set(earned);

@@ -21,7 +21,22 @@ Then open http://localhost:8080. Or open `app/index.html` from any static server
 - **Roadmap** — nine stages to the platinum, built from the official descriptions: story first, strangers while the story runs, then the open-world grind, 100% completion last.
 - **Missables** — the one possibly missable trophy (Positive Mental Attitude: meditate in Chapter 1) and the five stranger finals with story-tied windows, plus the cheat warning.
 - **Next up** — a planner listing your next ten unearned trophies in roadmap order.
+- **Stats** — a dashboard with a progress ring, progress by grade and by kind, hidden-vs-revealed counts, per-roadmap-stage bars, and the rarest trophies still unearned.
+- **Surprise me** — draws a random unearned trophy (never a spoiler-blocked one) and lets you pick another or mark it earned on the spot.
 - **Settings & save** — spoiler toggle, paper/night theme, export progress to a file and import it back, per-trophy notes, reset.
+
+## Keyboard shortcuts
+
+These work on the Checklist view and never fire while you type in a box:
+
+| Key | Action |
+| --- | --- |
+| `/` | Focus the search box |
+| `j` / `k` | Move the selection down / up the trophy list |
+| `e` | Toggle earned on the selected trophy |
+| `Esc` | Close the open guide pane |
+
+The checklist also has a **Collapse earned** toggle that hides ticked rows, and each guide pane has a **Copy trophy summary** button. Printing the checklist gives a clean paper list with no navigation or buttons.
 
 ## The list
 

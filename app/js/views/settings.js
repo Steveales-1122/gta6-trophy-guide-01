@@ -97,5 +97,22 @@ export function renderSettings(view, data) {
   about.append(el('p', '', '55 trophies: 1 platinum, 2 gold, 6 silver, 46 bronze; 28 hidden on PlayStation until earned; none online. Names, descriptions, grades and PSN progress targets were verified against Exophase and PSNProfiles on 19 November 2026. Guides are written in our own words and cite their sources; five trophies are still unconfirmed in every guide and say so plainly.'));
   grid.append(about);
 
+  const keys = el('section');
+  keys.append(el('h2', '', 'Keyboard shortcuts'));
+  keys.append(el('p', '', 'These work on the Checklist view and never fire while you type in a box.'));
+  const list = el('ul', 'sources');
+  for (const [key, action] of [
+    ['/', 'Focus the search box'],
+    ['j / k', 'Move the selection down / up the trophy list'],
+    ['e', 'Toggle earned on the selected trophy'],
+    ['Esc', 'Close the open guide pane'],
+  ]) {
+    const li = document.createElement('li');
+    li.textContent = `${key} — ${action}`;
+    list.append(li);
+  }
+  keys.append(list);
+  grid.append(keys);
+
   view.append(grid);
 }

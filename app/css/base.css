@@ -198,3 +198,48 @@ main { padding: 20px 28px 32px; max-width: 1080px; }
   .trophy { grid-template-columns: auto 1fr; }
   .trophy-actions { grid-column: 2; flex-direction: row; }
 }
+
+/* Stats dashboard: progress ring, per-grade/kind/stage bars, rarest list. */
+.stats-head { display: flex; flex-wrap: wrap; gap: 20px; align-items: center; margin-bottom: 18px; }
+.stats-head h2 { margin: 0 0 4px; font-size: 26px; }
+.stat-ring {
+  --pct: 0;
+  width: 96px; height: 96px; flex: none;
+  border-radius: 50%;
+  background: conic-gradient(var(--accent) calc(var(--pct) * 1%), var(--line) 0);
+  display: flex; align-items: center; justify-content: center;
+}
+.stat-ring-num {
+  width: 72px; height: 72px; border-radius: 50%;
+  background: var(--surface); display: flex; align-items: center; justify-content: center;
+  font-family: "Iowan Old Style", Palatino, Georgia, serif; font-size: 20px; font-weight: 700;
+}
+.stats-block { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 14px; }
+.stats-block h2 { margin: 0 0 10px; font-size: 20px; }
+.stat-row { display: grid; grid-template-columns: 220px 1fr 52px; gap: 12px; align-items: center; margin: 8px 0; }
+.stat-label { font-weight: 600; }
+.stat-count { text-align: right; color: var(--muted); font-size: 13px; }
+.stat-bar { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; }
+.stat-fill { height: 100%; width: 0; background: var(--accent); transition: width 0.3s; }
+
+/* Surprise-me picker card. */
+.picker-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px 22px; max-width: 640px; }
+.picker-card h2 { margin: 4px 0 6px; font-size: 26px; }
+
+/* Keyboard navigation: a visible selection and focus ring. */
+.trophy.selected { outline: 2px solid var(--accent); outline-offset: 2px; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.shortcuts-hint { font-size: 13px; }
+.shortcuts-hint kbd { border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; background: var(--surface); font-family: inherit; }
+
+/* Print: a clean checklist on paper, no nav, no header card, no buttons. */
+@media print {
+  body { background: #fff; color: #000; font-size: 12px; }
+  .tabs, .progress-card, .trophy-actions, .theme-row, .shortcuts-hint, .detail { display: none !important; }
+  .masthead { padding: 0 0 8px; }
+  .masthead h1 { font-size: 26px; }
+  main { padding: 0; max-width: none; }
+  .trophy { break-inside: avoid; border-color: #999; }
+  .trophy .check { accent-color: #000; }
+  .trophy-guide { display: none; }
+}

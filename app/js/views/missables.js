@@ -34,7 +34,10 @@ function trophyCard(data, t, heading) {
 
 export function renderMissables(view, data) {
   view.replaceChildren();
+  const risky = data.trophies.filter((t) => t.missable !== 'no');
+  const riskyDone = risky.filter((t) => store.earned.has(t.name)).length;
   view.append(el('p', 'count-line', MISSABLE_INTRO));
+  view.append(el('p', 'count-line', `${risky.length} trophies carry a timing risk — ${riskyDone} earned, ${risky.length - riskyDone} still open. Do the Chapter 1 one first, then start each stranger chain as soon as it unlocks.`));
 
   const pma = data.byName.get('Positive Mental Attitude');
   if (pma) view.append(trophyCard(data, pma, 'Possibly missable — do it in Chapter 1'));

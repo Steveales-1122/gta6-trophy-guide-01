@@ -20,3 +20,26 @@ export function gradeLabel(grade) {
 export function kindLabel(kind) {
   return kind.charAt(0).toUpperCase() + kind.slice(1);
 }
+
+// Count trophies by a field (grade, kind or stage) for the Stats dashboard.
+// Returns a Map from field value to count, in first-seen order.
+export function countBy(trophies, field) {
+  const counts = new Map();
+  for (const t of trophies) {
+    const key = t[field];
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return counts;
+}
+
+// The unearned trophies of one grade, rarest grade first when the caller
+// passes grades in rarity order (platinum, gold, silver, bronze).
+export function unearnedByGrade(trophies, earned, grades) {
+  const out = [];
+  for (const grade of grades) {
+    for (const t of trophies) {
+      if (t.grade === grade && !earned.has(t.name)) out.push(t);
+    }
+  }
+  return out;
+}
