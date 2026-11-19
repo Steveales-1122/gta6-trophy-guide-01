@@ -1,51 +1,72 @@
-// Loads the official trophy list (app/data/trophies.json) and indexes it by id and name.
-let cache = null;
+// Trophy data: loading it, indexing it, and the small queries the views use.
+// The file itself is fetched at run time from inside app/, never from the
+// network, so the guide works with the network off.
+import { DATA_URL } from "./config.js";
+
+let cached = null;
 
 export async function loadTrophies() {
-  if (cache) return cache;
-  const res = await fetch('data/trophies.json');
-  if (!res.ok) throw new Error('trophy list failed to load');
+  if (cached) return cached;
+  const res = await fetch(DATA_URL);
+  if (!res.ok) throw new Error("Could not load " + DATA_URL);
   const doc = await res.json();
-  const trophies = doc.trophies.slice().sort((a, b) => a.id - b.id);
-  const byId = new Map(trophies.map((t) => [t.id, t]));
-  const byName = new Map(trophies.map((t) => [t.name, t]));
-  cache = { doc, trophies, byId, byName };
-  return cache;
+  const list = Array.isArray(doc) ? doc : doc.trophies;
+  cached = list.map((t, i) => ({ ...t, index: i }));
+  return cached;
 }
 
-export function gradeLabel(grade) {
-  return grade.charAt(0).toUpperCase() + grade.slice(1);
+// The official counts the guide promises: 55 trophies, 1 Platinum,
+// 2 Gold, 6 Silver, 46 Bronze, 28 of them hidden on PlayStation.
+export function countByGrade(trophies) {
+  const out = { Platinum: 0, Gold: 0, Silver: 0, Bronze: 0 };
+  for (const t of trophies) out[t.grade] = (out[t.grade] || 0) + 1;
+  return out;
 }
 
-export function kindLabel(kind) {
-  return kind.charAt(0).toUpperCase() + kind.slice(1);
+export function byId(trophies, id) {
+  return trophies.find((t) => t.id === id) || null;
 }
 
-// Count trophies by a field (grade, kind or stage) for the Stats dashboard.
-// Returns a Map from field value to count, in first-seen order.
-export function countBy(trophies, field) {
-  const counts = new Map();
+export function byKind(trophies, kind) {
+  if (kind === "all") return trophies;
+  if (kind === "missable") return trophies.filter((t) => t.missable);
+  if (kind === "online") return [];
+  return trophies.filter((t) => t.kind === kind);
+}
+
+export function byStage(trophies, stage) {
+  return trophies.filter((t) => t.stage === stage);
+}
+
+export function storyTrophies(trophies) {
+  return trophies.filter((t) => t.kind === "story");
+}
+
+export function missableTrophies(trophies) {
+  return trophies.filter((t) => t.missable);
+}
+
+// Earned counts per grade, for the stats view.
+export function earnedByGrade(trophies, earned) {
+  const out = { Platinum: 0, Gold: 0, Silver: 0, Bronze: 0 };
   for (const t of trophies) {
-    const key = t[field];
-    counts.set(key, (counts.get(key) ?? 0) + 1);
-  }
-  return counts;
-}
-
-// The unearned trophies of one grade, rarest grade first when the caller
-// passes grades in rarity order (platinum, gold, silver, bronze).
-export function unearnedByGrade(trophies, earned, grades) {
-  const out = [];
-  for (const grade of grades) {
-    for (const t of trophies) {
-      if (t.grade === grade && !earned.has(t.name)) out.push(t);
-    }
+    if (earned[t.id]) out[t.grade] = (out[t.grade] || 0) + 1;
   }
   return out;
 }
 
-// The trophies of one roadmap stage, in checklist order — the grouping the
-// Stages view and the Markdown export both build from.
-export function trophiesByStage(trophies, stageNumber) {
-  return trophies.filter((t) => t.stage === stageNumber);
+// A trophy's display name under the spoiler setting: story trophies stay
+// hidden — name and description both — until they are earned.
+export function displayName(trophy, state) {
+  if (state.spoilers && trophy.kind === "story" && !state.earned[trophy.id]) {
+    return "Hidden story trophy";
+  }
+  return trophy.name;
+}
+
+export function displayDesc(trophy, state) {
+  if (state.spoilers && trophy.kind === "story" && !state.earned[trophy.id]) {
+    return "This trophy's name and description stay hidden until you earn it. Turn spoilers off in Settings to reveal all story trophies.";
+  }
+  return trophy.desc;
 }

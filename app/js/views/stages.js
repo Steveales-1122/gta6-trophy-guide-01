@@ -1,85 +1,48 @@
-// The Stages view: the same checklist as the Roadmap, but grouped by the nine
-// roadmap stages and collapsible — each stage shows its own progress bar and
-// earned/total count, and the first stage with trophies still to earn is
-// highlighted as the next one to work on.
-import { ROADMAP } from '../config.js';
-import { store } from '../store.js';
-import { visibleName } from '../filters.js';
+// Stages view: each roadmap stage as its own checklist, with its progress
+// bar and its trophies in order. The roadmap view tells the story of the
+// six stages; this view is where you tick them off one stage at a time.
+import { STAGES } from "../config.js";
+import { byStage, displayName, displayDesc } from "../data.js";
 
-function el(tag, cls, text) {
-  const n = document.createElement(tag);
-  if (cls) n.className = cls;
-  if (text != null) n.textContent = text;
-  return n;
+function esc(s) {
+  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-export function renderStages(view, data) {
-  view.replaceChildren();
-  view.append(el('p', 'count-line', 'The checklist grouped by roadmap stage. Open a stage to see its trophies, tick them off here or in the Checklist — progress is the same either way. The highlighted stage is the next one with trophies still to earn.'));
+export function renderStages(root, app) {
+  const { trophies, state } = app;
+  const sections = STAGES.map((stage) => {
+    const members = byStage(trophies, stage.id);
+    const got = members.filter((t) => state.earned[t.id]).length;
+    const pct = members.length ? Math.round((got / members.length) * 100) : 0;
+    const items = members
+      .map((t) => {
+        const earned = !!state.earned[t.id];
+        return `<li class="trophy-row${earned ? " is-earned" : ""}">
+          <label class="row-check"><input type="checkbox" data-toggle="${esc(t.id)}"${earned ? " checked" : ""} aria-label="Mark ${esc(t.name)} earned"><span class="box" aria-hidden="true"></span></label>
+          <a class="row-main" href="#/trophy/${esc(t.id)}">
+            <span class="row-name">${esc(displayName(t, state))}</span>
+            <span class="row-desc">${esc(displayDesc(t, state))}</span>
+            <span class="row-meta"><span class="grade-chip grade-${t.grade.toLowerCase()}">${esc(t.grade)}</span><span class="kind-chip">${esc(t.kind)}</span>${t.missable ? ' <span class="flag-missable">MISSABLE</span>' : ""}</span>
+          </a>
+        </li>`;
+      })
+      .join("");
+    return `<section class="stage-block" id="stage-${stage.id}">
+      <header>
+        <h3><span class="stage-num">Stage ${stage.id}</span> ${esc(stage.title)}</h3>
+        <p>${esc(stage.blurb)}</p>
+        <p class="stage-progress">${got} of ${members.length} earned</p>
+        <div class="progress-track thin"><div class="progress-fill" style="width:${pct}%"></div></div>
+      </header>
+      <ul class="trophy-list">${items}</ul>
+    </section>`;
+  }).join("");
 
-  // The next stage to work on: the first stage (in roadmap order) that is
-  // not yet complete. Once every stage is complete there is no next stage.
-  const nextStage = ROADMAP.find((stage) => {
-    const members = data.trophies.filter((t) => t.stage === stage.n);
-    return members.length > 0 && members.some((t) => !store.earned.has(t.name));
-  });
-
-  for (const stage of ROADMAP) {
-    const members = data.trophies.filter((t) => t.stage === stage.n);
-    const done = members.filter((t) => store.earned.has(t.name)).length;
-    const complete = members.length > 0 && done === members.length;
-    const isNext = nextStage && stage.n === nextStage.n;
-
-    const block = el('section', `stage-block stages-stage${isNext ? ' stages-next' : ''}`);
-    const details = document.createElement('details');
-    // The next stage starts open so the player lands on what to do; finished
-    // stages start closed so the list stays short.
-    details.open = isNext || !complete;
-    const summary = document.createElement('summary');
-    summary.className = 'stages-summary';
-    summary.append(el('span', 'stages-title', `Stage ${stage.n} — ${stage.title}`));
-    summary.append(el('span', 'stages-count', `${done}/${members.length}`));
-    if (isNext) summary.append(el('span', 'tag stages-next-tag', 'Next up'));
-    if (complete) summary.append(el('span', 'tag', 'Complete'));
-    details.append(summary);
-
-    const bar = el('div', 'progress-bar');
-    const fill = el('div', 'progress-fill');
-    fill.style.width = `${members.length ? (done / members.length) * 100 : 0}%`;
-    bar.append(fill);
-    details.append(bar);
-    details.append(el('p', 'stage-note', stage.note));
-
-    const ul = el('ul', 'stage-trophies');
-    for (const t of members) {
-      const earned = store.earned.has(t.name);
-      const li = document.createElement('li');
-      const box = document.createElement('input');
-      box.type = 'checkbox';
-      box.className = 'check';
-      box.checked = earned;
-      box.setAttribute('aria-label', `Earned: ${visibleName(t, store.settings, store.earned)}`);
-      box.addEventListener('change', () => {
-        store.toggle(t.name);
-        document.dispatchEvent(new CustomEvent('progress-changed'));
-        renderStages(view, data);
-      });
-      li.append(box);
-      li.append(el('span', earned ? 'done' : 'todo', earned ? '✓' : '○'));
-      const a = document.createElement('a');
-      a.href = `#/trophy/${t.id}`;
-      a.textContent = visibleName(t, store.settings, store.earned);
-      li.append(a);
-      li.append(el('span', 'tag', t.grade));
-      if (earned) li.append(el('span', 'tag stages-earned-when', store.earnedWhenLabel(t.name)));
-      ul.append(li);
-    }
-    details.append(ul);
-    block.append(details);
-    view.append(block);
-  }
-
-  if (!nextStage) {
-    view.append(el('p', 'count-line', 'Every stage is complete — Vice Got a Price! is yours.'));
-  }
+  root.innerHTML = `
+    <section class="view-head">
+      <h2>Stages</h2>
+      <p class="view-sub">Six stages, each a checklist of its own. Finish a stage, then move to the next — the Platinum is the last line of stage 6.</p>
+    </section>
+    <nav class="stage-jump">${STAGES.map((s) => `<a href="#stage-${s.id}">Stage ${s.id}</a>`).join(" ")}</nav>
+    ${sections}`;
 }

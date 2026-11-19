@@ -1,116 +1,191 @@
-// Boot and routing for Sunset Platinum: loads the trophy list, renders the view
-// named by the hash, and keeps the progress header and theme in sync.
-import { loadTrophies } from './data.js';
-import { store } from './store.js';
-import { renderChecklist } from './views/checklist.js';
-import { renderRoadmap } from './views/roadmap.js';
-import { renderStages } from './views/stages.js';
-import { renderTimeline } from './views/timeline.js';
-import { renderMissables } from './views/missables.js';
-import { renderPlanner } from './views/planner.js';
-import { renderSettings } from './views/settings.js';
-import { renderStats } from './views/stats.js';
-import { renderPicker } from './views/picker.js';
-import { initShortcuts } from './keys.js';
-import { openDetail, closeDetail } from './views/detail.js';
-import { buildMarkdown, downloadMarkdown } from './export-md.js';
+// Bootstrap and router for the Sunset Platinum guide.
+// Hash routing: #/checklist, #/roadmap, #/stages, #/missables, #/stats,
+// #/planner, #/picker, #/timeline, #/settings, #/trophy/<id>.
+// Earned toggles are handled by one delegated listener, so every view
+// gets them for free.
+import { VIEWS } from "./config.js";
+import { loadTrophies } from "./data.js";
+import { loadState, saveState, toggleEarned } from "./store.js";
+import { blankFilter } from "./filters.js";
+import { installShortcuts } from "./keys.js";
+import { exportJson } from "./store.js";
+import { renderChecklist } from "./views/checklist.js";
+import { renderDetail } from "./views/detail.js";
+import { renderRoadmap } from "./views/roadmap.js";
+import { renderMissables } from "./views/missables.js";
+import { renderStats } from "./views/stats.js";
+import { renderStages } from "./views/stages.js";
+import { renderPlanner } from "./views/planner.js";
+import { renderPicker } from "./views/picker.js";
+import { renderTimeline } from "./views/timeline.js";
+import { renderSettings } from "./views/settings.js";
 
-const view = document.getElementById('view');
-const earnedCount = document.getElementById('earnedCount');
-const progressFill = document.getElementById('progressFill');
-const progressLine = document.getElementById('progressLine');
-const gradeLine = document.getElementById('gradeLine');
-const themeToggle = document.getElementById('themeToggle');
+const RENDERERS = {
+  checklist: renderChecklist,
+  roadmap: renderRoadmap,
+  stages: renderStages,
+  missables: renderMissables,
+  stats: renderStats,
+  planner: renderPlanner,
+  picker: renderPicker,
+  timeline: renderTimeline,
+  settings: renderSettings,
+};
 
-function applyTheme() {
-  const theme = store.settings.theme === 'night' ? 'night' : 'paper';
-  document.documentElement.setAttribute('data-theme', theme);
-  themeToggle.textContent = theme === 'night' ? 'Switch to paper theme' : 'Switch to night theme';
-}
+const app = {
+  trophies: [],
+  state: loadState(),
+  filter: blankFilter(),
+  picked: null,
+  view: "checklist",
+  param: null,
 
-function renderProgress(data) {
-  const total = data.trophies.length;
-  const earned = store.earned.size;
-  earnedCount.textContent = String(earned);
-  progressFill.style.width = `${total ? (earned / total) * 100 : 0}%`;
-  progressLine.textContent = `${earned} earned · ${total - earned} to go`;
-  const byGrade = {};
-  for (const t of data.trophies) {
-    if (store.earned.has(t.name)) byGrade[t.grade] = (byGrade[t.grade] ?? 0) + 1;
-  }
-  const parts = ['platinum', 'gold', 'silver', 'bronze']
-    .map((g) => `${byGrade[g] ?? 0} ${g}`)
-    .join(' · ');
-  gradeLine.textContent = `Earned by grade: ${parts}`;
-}
+  go(view, param) {
+    this.view = view;
+    this.param = param || null;
+    location.hash = param ? `#/${view}/${param}` : `#/${view}`;
+    this.render();
+  },
 
-function setActiveTab(tab) {
-  for (const a of document.querySelectorAll('.tabs a')) {
-    a.classList.toggle('active', a.dataset.tab === tab);
-  }
-  // Keep the tab title in step with the view, so a bookmarked or shared
-  // hash still says which section of the guide it opens.
-  const labels = {
-    checklist: 'Checklist',
-    roadmap: 'Roadmap',
-    missables: 'Missables',
-    next: 'Next up',
-    stages: 'Stages',
-    timeline: 'Earned history',
-    stats: 'Stats',
-    picker: 'Surprise me',
-    settings: 'Settings & save',
-  };
-  document.title = `${labels[tab] ?? 'Checklist'} — Sunset Platinum · GTA VI Trophy Guide`;
-}
+  viewByKey(key) {
+    const found = VIEWS.find((v) => v.key === key);
+    return found ? found.id : null;
+  },
 
-function route(data) {
-  const hash = location.hash || '#/checklist';
-  const match = hash.match(/^#\/trophy\/(\d+)$/);
-  if (match) {
-    const id = Number(match[1]);
-    if (data.byId.has(id)) {
-      setActiveTab('checklist');
-      renderChecklist(view, data);
-      openDetail(data, id);
+  focusSearch() {
+    if (this.view !== "checklist") this.go("checklist");
+    const input = document.querySelector("[data-filter-query]");
+    if (input) input.focus();
+  },
+
+  showHelp() {
+    const dialog = document.getElementById("help-dialog");
+    if (dialog && dialog.showModal) dialog.showModal();
+  },
+
+  downloadExport() {
+    const blob = new Blob([exportJson(this.state)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "sunset-platinum-progress.json";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  },
+
+  toggle(id) {
+    toggleEarned(this.state, id);
+    this.render();
+  },
+
+  setFilter(patch, keepFocus) {
+    Object.assign(this.filter, patch);
+    const query = keepFocus ? document.querySelector("[data-filter-query]") : null;
+    const pos = query ? query.selectionStart : 0;
+    this.render();
+    if (keepFocus) {
+      const next = document.querySelector("[data-filter-query]");
+      if (next) {
+        next.focus();
+        try {
+          next.setSelectionRange(pos, pos);
+        } catch (err) {
+          // Some browsers refuse a selection on search inputs; ignore it.
+        }
+      }
+    }
+  },
+
+  setSpoilers(on) {
+    this.state.spoilers = on;
+    saveState(this.state);
+    this.render();
+  },
+
+  replaceState(next) {
+    this.state = next;
+    this.render();
+  },
+
+  render() {
+    const root = document.getElementById("view");
+    const done = Object.keys(this.state.earned).length;
+    const total = this.trophies.length;
+    const pct = total ? Math.round((done / total) * 100) : 0;
+    const fill = document.getElementById("header-progress-fill");
+    if (fill) fill.style.width = pct + "%";
+    const label = document.getElementById("header-progress-label");
+    if (label) label.textContent = done + " of " + total + " earned (" + pct + "%)";
+
+    document.querySelectorAll("#nav a").forEach((a) => {
+      const view = a.getAttribute("href").replace(/^#\//, "").split("/")[0];
+      if (view === this.view) a.setAttribute("aria-current", "page");
+      else a.removeAttribute("aria-current");
+    });
+
+    if (this.view === "trophy") {
+      renderDetail(root, this, this.param);
       return;
     }
-  }
-  closeDetail();
-  const tab = hash.replace(/^#\//, '').split('/')[0] || 'checklist';
-  setActiveTab(tab);
-  if (tab === 'roadmap') renderRoadmap(view, data);
-  else if (tab === 'stages') renderStages(view, data);
-  else if (tab === 'timeline') renderTimeline(view, data);
-  else if (tab === 'missables') renderMissables(view, data);
-  else if (tab === 'next') renderPlanner(view, data);
-  else if (tab === 'stats') renderStats(view, data);
-  else if (tab === 'picker') renderPicker(view, data);
-  else if (tab === 'settings') renderSettings(view, data);
-  else renderChecklist(view, data);
+    const render = RENDERERS[this.view] || RENDERERS.checklist;
+    render(root, this);
+  },
+};
+
+function parseHash() {
+  const raw = location.hash.replace(/^#\/?/, "");
+  const [view, param] = raw.split("/");
+  if (view === "trophy" && param) return { view: "trophy", param };
+  if (RENDERERS[view]) return { view, param: null };
+  return { view: "checklist", param: null };
 }
 
-const data = await loadTrophies();
-applyTheme();
-renderProgress(data);
-initShortcuts(data);
-route(data);
-window.addEventListener('hashchange', () => route(data));
-document.addEventListener('progress-changed', () => renderProgress(data));
-document.addEventListener('theme-changed', applyTheme);
-themeToggle.addEventListener('click', () => {
-  store.settings.theme = store.settings.theme === 'night' ? 'paper' : 'night';
-  store.save();
-  applyTheme();
-});
+async function boot() {
+  try {
+    app.trophies = await loadTrophies();
+  } catch (err) {
+    document.getElementById("view").innerHTML =
+      `<section class="view-head"><h2>Could not load the trophy list</h2>` +
+      `<p class="view-sub">The guide reads its data from data/trophies.json inside app/. ` +
+      `Serve app/ with a static server (for example: node serve.ts) and reload.</p></section>`;
+    return;
+  }
 
-// Markdown export, wired once here so any view can offer it: a button with
-// data-action="export-md" downloads the current progress as a .md checklist.
-// The download needs the loaded trophy list, so the handler lives in main.
-document.addEventListener('click', (e) => {
-  const btn = e.target.closest('[data-action="export-md"]');
-  if (!btn) return;
-  downloadMarkdown('gta6-trophy-progress.md', buildMarkdown(data));
-  btn.textContent = 'Markdown downloaded ✓';
-  setTimeout(() => { btn.textContent = 'Export as Markdown'; }, 1500);
-});
+  const nav = document.getElementById("nav");
+  nav.innerHTML = VIEWS.map(
+    (v) => `<a href="#/${v.id}" title="Shortcut: ${v.key}">${v.label}</a>`,
+  ).join("");
+
+  window.addEventListener("hashchange", () => {
+    const parsed = parseHash();
+    app.view = parsed.view;
+    app.param = parsed.param;
+    app.render();
+  });
+
+  // One delegated listener for every earned toggle in every view, whether
+  // it is a checkbox in a row or a button on a detail card.
+  document.addEventListener("change", (event) => {
+    const input = event.target.closest("input[data-toggle]");
+    if (!input) return;
+    event.preventDefault();
+    app.toggle(input.getAttribute("data-toggle"));
+  });
+  document.addEventListener("click", (event) => {
+    const btn = event.target.closest("button[data-toggle]");
+    if (!btn) return;
+    event.preventDefault();
+    app.toggle(btn.getAttribute("data-toggle"));
+  });
+
+  installShortcuts(app);
+
+  const parsed = parseHash();
+  app.view = parsed.view;
+  app.param = parsed.param;
+  app.render();
+}
+
+boot();

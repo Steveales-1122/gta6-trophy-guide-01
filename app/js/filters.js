@@ -1,75 +1,43 @@
-// Filtering and the spoiler rule for the checklist.
-// Spoilers on: a hidden story trophy stays masked (name and description replaced)
-// until it is earned. Everything else is always shown.
-export function isSpoiled(trophy, settings, earned) {
-  return settings.spoilers && trophy.hidden && trophy.kind === 'story' && !earned.has(trophy.name);
+// Checklist filtering: kind, earned state, and the search box.
+// Pure functions over the trophy list, so the views stay thin.
+export function blankFilter() {
+  return { kind: "all", show: "all", query: "" };
 }
 
-export function visibleName(trophy, settings, earned) {
-  return isSpoiled(trophy, settings, earned) ? 'Hidden trophy' : trophy.name;
-}
-
-export function visibleDescription(trophy, settings, earned) {
-  return isSpoiled(trophy, settings, earned)
-    ? 'A hidden story trophy. Earn it to reveal its name and description.'
-    : trophy.description;
-}
-
-export function filterTrophies(trophies, settings, earned) {
-  const q = settings.query.trim().toLowerCase();
-  return trophies.filter((t) => {
-    if (settings.kind !== 'all') {
-      if (settings.kind === 'missable') {
-        if (t.missable === 'no') return false;
-      } else if (settings.kind === 'online') {
-        return false; // No online trophies: the game lists none.
-      } else if (t.kind !== settings.kind) return false;
-    }
-    if (settings.missableOnly && t.missable === 'no') return false;
-    if (settings.grade !== 'all' && t.grade !== settings.grade) return false;
-    if (settings.state === 'earned' && !earned.has(t.name)) return false;
-    if (settings.state === 'remaining' && earned.has(t.name)) return false;
-    if (q) {
-      const hay = `${t.name} ${t.description} ${t.guide}`.toLowerCase();
-      if (!hay.includes(q)) return false;
-    }
-    return true;
-  });
-}
-
-// Next up: unearned trophies in roadmap order, quick story wins first.
-export function nextUp(trophies, earned, limit = 10) {
-  return trophies
-    .filter((t) => !earned.has(t.name))
-    .sort((a, b) => a.stage - b.stage || a.id - b.id)
-    .slice(0, limit);
-}
-
-// Quick filter helper for the toolbar: the unearned trophies only, in
-// checklist order, ignoring every other filter setting.
-export function unearnedOnly(trophies, earned) {
-  return trophies.filter((t) => !earned.has(t.name));
-}
-
-// The share of the set earned so far, as a whole percent (0–100).
-export function earnedPercent(trophies, earned) {
-  if (!trophies.length) return 0;
-  return Math.round((earned.size / trophies.length) * 100);
-}
-
-// Earned trophies in the order they were earned, for the Earned-history view:
-// trophies ticked before timestamps were tracked come first (in list order,
-// their `when` is null), then the dated ones, earliest first. The store is
-// passed in so the helper reads the same timestamps the views show.
-export function earnedInOrder(trophies, store) {
-  const undated = [];
-  const dated = [];
-  for (const t of trophies) {
-    if (!store.earned.has(t.name)) continue;
-    const when = store.earnedWhen(t.name);
-    if (when) dated.push({ trophy: t, when });
-    else undated.push({ trophy: t, when: null });
+// show is one of "all" | "earned" | "todo".
+export function applyFilter(trophies, state, filter) {
+  const q = filter.query.trim().toLowerCase();
+  let list = trophies;
+  if (filter.kind === "missable") {
+    list = list.filter((t) => t.missable);
+  } else if (filter.kind === "online") {
+    list = [];
+  } else if (filter.kind !== "all") {
+    list = list.filter((t) => t.kind === filter.kind);
   }
-  dated.sort((a, b) => a.when - b.when);
-  return [...undated, ...dated];
+  if (filter.show === "earned") {
+    list = list.filter((t) => state.earned[t.id]);
+  } else if (filter.show === "todo") {
+    list = list.filter((t) => !state.earned[t.id]);
+  }
+  if (q) {
+    list = list.filter((t) => {
+      const hay = [t.name, t.desc, t.guide, t.kind, t.grade].join(" ").toLowerCase();
+      return hay.includes(q);
+    });
+  }
+  return list;
+}
+
+// Progress inside one filtered list, for the "x of y" line above it.
+export function filterProgress(trophies, state, filter) {
+  const list = applyFilter(trophies, state, filter);
+  const done = list.filter((t) => state.earned[t.id]).length;
+  return { done, total: list.length };
+}
+
+// The next unearned trophy of a kind, for the planner's "do this next" line.
+export function nextTodo(trophies, state, kind) {
+  const list = applyFilter(trophies, state, { kind, show: "todo", query: "" });
+  return list.length ? list[0] : null;
 }

@@ -1,63 +1,64 @@
-// "Surprise me": picks a random unearned trophy that the spoiler setting
-// does not block, shows its card, and lets the player pick another or mark
-// it earned right here. Pure chance — no history, no stored state.
-import { store } from '../store.js';
-import { isSpoiled, visibleName, visibleDescription } from '../filters.js';
-import { gradeLabel, kindLabel } from '../data.js';
+// Surprise-me picker: one random unearned trophy, with its guide, and a
+// button for another one. For the player who opens the guide and asks
+// "what should I do tonight?" — plus a mark-earned button right there.
+import { displayName, displayDesc } from "../data.js";
 
-function el(tag, cls, text) {
-  const n = document.createElement(tag);
-  if (cls) n.className = cls;
-  if (text != null) n.textContent = text;
-  return n;
+function esc(s) {
+  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-function pickOne(trophies) {
-  const pool = trophies.filter((t) => !store.earned.has(t.name) && !isSpoiled(t, store.settings, store.earned));
+function pickRandom(trophies, state, excludeId) {
+  const pool = trophies.filter((t) => !state.earned[t.id] && t.id !== excludeId);
   if (!pool.length) return null;
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
-export function renderPicker(view, data) {
-  view.replaceChildren();
-  view.append(el('p', 'count-line', 'Stuck for what to do next? Draw a random trophy you have not earned yet. Spoiler-blocked story trophies never come up.'));
-  // A progress reminder beside the draw, so a lucky pick lands in context.
-  view.append(el('p', 'count-line', `${store.earned.size} of ${data.trophies.length} earned — ${data.trophies.length - store.earned.size} left in the hat.`));
+export function renderPicker(root, app) {
+  const { trophies, state } = app;
+  const remaining = trophies.filter((t) => !state.earned[t.id]).length;
+  const current = app.picked && !state.earned[app.picked] ? trophies.find((t) => t.id === app.picked) : null;
+  const choice = current || pickRandom(trophies, state, null);
+  if (choice) app.picked = choice.id;
 
-  const card = el('section', 'picker-card');
-  view.append(card);
-
-  function draw() {
-    card.replaceChildren();
-    const t = pickOne(data.trophies);
-    if (!t) {
-      card.append(el('h2', '', 'Nothing left to draw'));
-      card.append(el('p', '', 'Every trophy is earned, or the rest are hidden behind the spoiler setting. Turn spoilers off in Settings, or enjoy the platinum.'));
-      return;
-    }
-    card.append(el('p', 'kicker', `${gradeLabel(t.grade)} · ${kindLabel(t.kind)}${t.hidden ? ' · Hidden on PSN' : ''}`));
-    card.append(el('h2', '', visibleName(t, store.settings, store.earned)));
-    card.append(el('p', 'trophy-desc', visibleDescription(t, store.settings, store.earned)));
-    card.append(el('p', 'trophy-guide', t.guide));
-    const row = el('div', 'row');
-    const again = el('button', '', 'Pick another');
-    again.type = 'button';
-    again.addEventListener('click', draw);
-    row.append(again);
-    const earn = el('button', 'primary', 'Mark earned');
-    earn.type = 'button';
-    earn.addEventListener('click', () => {
-      store.toggle(t.name);
-      document.dispatchEvent(new CustomEvent('progress-changed'));
-      draw();
-    });
-    row.append(earn);
-    const open = el('button', '', 'Open full guide');
-    open.type = 'button';
-    open.addEventListener('click', () => { location.hash = `#/trophy/${t.id}`; });
-    row.append(open);
-    card.append(row);
+  if (!choice) {
+    root.innerHTML = `
+      <section class="view-head">
+        <h2>Surprise me</h2>
+        <p class="view-sub">Nothing left to pick — every trophy is earned. The Platinum is yours.</p>
+      </section>
+      <p><a class="btn" href="#/stats">See your stats</a></p>`;
+    return;
   }
 
-  draw();
+  root.innerHTML = `
+    <section class="view-head">
+      <h2>Surprise me</h2>
+      <p class="view-sub">One random trophy from the ${remaining} you have not earned yet. Do it tonight, or roll again.</p>
+    </section>
+    <article class="detail-card">
+      <header>
+        <span class="grade-chip grade-${choice.grade.toLowerCase()}">${esc(choice.grade)}</span>
+        ${choice.hidden ? `<span class="flag-hidden">HIDDEN ON PLAYSTATION</span>` : ""}
+        ${choice.missable ? `<span class="flag-missable">MISSABLE</span>` : ""}
+        <h2><a href="#/trophy/${esc(choice.id)}">${esc(displayName(choice, state))}</a></h2>
+        <p class="official-desc">${esc(displayDesc(choice, state))}</p>
+        <p class="detail-meta">Kind: ${esc(choice.kind)} &middot; Roadmap stage ${choice.stage}${choice.count ? ` &middot; Count: ${choice.count}` : ""}</p>
+      </header>
+      <section>
+        <h3>Guide</h3>
+        <p>${esc(choice.guide)}</p>
+        <ol class="steps">${(choice.steps || []).map((s) => `<li>${esc(s)}</li>`).join("")}</ol>
+      </section>
+      <footer class="detail-actions">
+        <button class="btn-primary" data-toggle="${esc(choice.id)}">Mark as earned</button>
+        <button class="btn" data-pick-another>Another one</button>
+        <a class="btn" href="#/trophy/${esc(choice.id)}">Full guide &rarr;</a>
+      </footer>
+    </article>`;
+
+  root.querySelector("[data-pick-another]").addEventListener("click", () => {
+    const next = pickRandom(trophies, state, choice.id);
+    app.picked = next ? next.id : null;
+    app.render();
+  });
 }

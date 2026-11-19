@@ -1,56 +1,43 @@
-// The roadmap view: nine stages to the platinum, each with its trophies and a
-// per-stage progress bar, built from the official trophy descriptions.
-import { ROADMAP } from '../config.js';
-import { store } from '../store.js';
-import { visibleName } from '../filters.js';
+// Roadmap view: the six stages in order, each with its blurb, its progress
+// and its trophies. This is the order the guide recommends playing in —
+// story first, then strangers, then the open world, then crime, then
+// activities, then secrets and the Platinum.
+import { STAGES } from "../config.js";
+import { byStage, displayName } from "../data.js";
 
-function el(tag, cls, text) {
-  const n = document.createElement(tag);
-  if (cls) n.className = cls;
-  if (text != null) n.textContent = text;
-  return n;
+function esc(s) {
+  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-export function renderRoadmap(view, data) {
-  view.replaceChildren();
-  view.append(el('p', 'count-line', 'The order to earn them in: story first, strangers while the story is still running, then the open-world grind, and 100% completion last. Each stage lists its trophies; tick them off in the Checklist as you go.'));
-  // The Stages view shows this same order as collapsible groups with
-  // checkboxes, so the player can work through it without leaving the page.
-  const stagesLink = el('p', 'count-line', '');
-  const stagesA = document.createElement('a');
-  stagesA.href = '#/stages';
-  stagesA.textContent = 'Open the collapsible Stages view →';
-  stagesLink.append(stagesA);
-  view.append(stagesLink);
+export function renderRoadmap(root, app) {
+  const { trophies, state } = app;
+  const done = Object.keys(state.earned).length;
+  const sections = STAGES.map((stage) => {
+    const members = byStage(trophies, stage.id);
+    const got = members.filter((t) => state.earned[t.id]).length;
+    const pct = members.length ? Math.round((got / members.length) * 100) : 0;
+    const items = members
+      .map((t) => {
+        const earned = !!state.earned[t.id];
+        return `<li class="${earned ? "is-earned" : ""}"><a href="#/trophy/${esc(t.id)}">${esc(displayName(t, state))}</a> <span class="mini-grade">${esc(t.grade)}</span>${t.missable ? ' <span class="flag-missable">MISSABLE</span>' : ""}</li>`;
+      })
+      .join("");
+    return `<section class="stage-block">
+      <header>
+        <h3><span class="stage-num">Stage ${stage.id}</span> ${esc(stage.title)}</h3>
+        <p>${esc(stage.blurb)}</p>
+        <p class="stage-progress">${got} of ${members.length} earned</p>
+        <div class="progress-track thin"><div class="progress-fill" style="width:${pct}%"></div></div>
+      </header>
+      <ul class="stage-list">${items}</ul>
+    </section>`;
+  }).join("");
 
-  for (const stage of ROADMAP) {
-    const members = data.trophies.filter((t) => t.stage === stage.n);
-    const done = members.filter((t) => store.earned.has(t.name)).length;
-    const block = el('section', 'stage-block');
-    block.append(el('h2', '', `Stage ${stage.n} — ${stage.title}`));
-    block.append(el('p', 'stage-note', `${stage.note} (${done} of ${members.length} earned)`));
-    // A one-word completion label beside the count, so the stage's state
-    // reads at a glance without opening it.
-    const label = members.length === 0 ? '—' : done === 0 ? 'Not started' : done === members.length ? 'Complete' : 'In progress';
-    block.append(el('p', 'stage-note', `Status: ${label}.`));
-    const bar = el('div', 'progress-bar');
-    const fill = el('div', 'progress-fill');
-    fill.style.width = `${members.length ? (done / members.length) * 100 : 0}%`;
-    bar.append(fill);
-    block.append(bar);
-    const ul = el('ul', 'stage-trophies');
-    for (const t of members) {
-      const earned = store.earned.has(t.name);
-      const li = document.createElement('li');
-      li.append(el('span', earned ? 'done' : 'todo', earned ? '✓' : '○'));
-      const a = document.createElement('a');
-      a.href = `#/trophy/${t.id}`;
-      a.textContent = visibleName(t, store.settings, store.earned);
-      li.append(a);
-      li.append(el('span', 'tag', t.grade));
-      ul.append(li);
-    }
-    block.append(ul);
-    view.append(block);
-  }
+  root.innerHTML = `
+    <section class="view-head">
+      <h2>Roadmap to the Platinum</h2>
+      <p class="view-sub">${done} of ${trophies.length} earned. Six stages, in order — each one builds on the last, and the Platinum is stage 6's last step.</p>
+    </section>
+    <aside class="warn-box"><strong>Before you start:</strong> make a manual save at the start of every chapter. GTA VI has no mission replay, and the one missable trophy (Positive Mental Attitude) hinges on a Chapter 1 spot. Cheats disable trophies — keep them off this save.</aside>
+    ${sections}`;
 }

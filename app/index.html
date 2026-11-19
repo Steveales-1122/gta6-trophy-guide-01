@@ -4,44 +4,39 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sunset Platinum — GTA VI Trophy Guide &amp; Tracker</title>
-<meta name="description" content="An offline guide and tracker for all 55 PlayStation 5 trophies of Grand Theft Auto VI: official names, descriptions and grades, a saved checklist, a roadmap to the platinum, missable warnings, and a cited guide for every trophy.">
-<meta name="theme-color" content="#d24e2a">
-<meta name="keywords" content="GTA VI, Grand Theft Auto VI, trophies, platinum, trophy guide, tracker, Leonida, PlayStation 5">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='15' fill='%23d24e2a'/%3E%3Ctext x='16' y='22' font-size='18' text-anchor='middle' fill='white' font-family='Georgia'%3ES%3C/text%3E%3C/svg%3E">
+<meta name="description" content="An offline guide and tracker for all 55 PlayStation 5 trophies of Grand Theft Auto VI: checklist, roadmap, missables, stats and cited guides.">
 <link rel="stylesheet" href="css/base.css">
 </head>
 <body>
-<header class="masthead">
-  <div class="masthead-title">
-    <p class="kicker">Grand Theft Auto VI &middot; PlayStation 5 &middot; 55 trophies</p>
-    <h1>Sunset Platinum</h1>
-    <p class="subtitle">The offline trophy guide and tracker for Leonida. Every official name, description and grade, a checklist that saves in your browser, a roadmap to the platinum, and a guide for each trophy in our own words, with its sources cited.</p>
+<header class="app-header">
+  <div class="header-inner">
+    <div>
+      <h1>Sunset Platinum</h1>
+      <p class="tagline">An offline GTA VI trophy guide &amp; tracker — all 55 PlayStation 5 trophies</p>
+    </div>
+    <div class="header-progress">
+      <span id="header-progress-label">0 of 55 earned (0%)</span>
+      <div class="progress-track"><div class="progress-fill" id="header-progress-fill" style="width:0%"></div></div>
+    </div>
   </div>
-  <div class="progress-card" id="progressCard" aria-label="Overall progress">
-    <div class="big-count"><span id="earnedCount">0</span><span class="of">/ 55</span></div>
-    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
-    <p class="progress-line" id="progressLine">0 earned &middot; 55 to go</p>
-    <p class="grade-line" id="gradeLine"></p>
-  </div>
+  <nav id="nav" aria-label="Guide sections"></nav>
 </header>
-<nav class="tabs" aria-label="Guide sections">
-  <a href="#/checklist" data-tab="checklist">Checklist</a>
-  <a href="#/roadmap" data-tab="roadmap">Roadmap</a>
-  <a href="#/missables" data-tab="missables">Missables</a>
-  <a href="#/next" data-tab="next">Next up</a>
-  <a href="#/stages" data-tab="stages">Stages</a>
-  <a href="#/timeline" data-tab="timeline">Earned history</a>
-  <a href="#/stats" data-tab="stats">Stats</a>
-  <a href="#/picker" data-tab="picker">Surprise me</a>
-  <a href="#/settings" data-tab="settings">Settings &amp; save</a>
-</nav>
-<main id="view"></main>
-<aside id="detail" class="detail" hidden aria-label="Trophy guide"></aside>
-<footer class="colophon">
-  <p>Names, descriptions, grades and PSN progress targets are PlayStation's official list, as published on Exophase and PSNProfiles and verified 19 November 2026. Guides are written for this page in our own words; each cites its sources beside it. No Rockstar artwork, no network requests: this page works with the network off. Not affiliated with Rockstar Games.</p>
-  <p class="theme-row"><button id="themeToggle" type="button">Switch to night theme</button></p>
-  <p class="shortcuts-hint">Keyboard: <kbd>/</kbd> search &middot; <kbd>j</kbd>/<kbd>k</kbd> move &middot; <kbd>e</kbd> toggle earned &middot; <kbd>s</kbd> stages &middot; <kbd>h</kbd> earned history &middot; <kbd>Esc</kbd> close guide. See the Stats dashboard for progress by grade, kind and roadmap stage, or Surprise me for a random next trophy.</p>
+<main id="view" aria-live="polite"></main>
+<footer class="app-footer">
+  <p>Official trophy names, descriptions and grades are PlayStation's, taken from Exophase on 18 November 2026 and cross-checked with PSNProfiles and TrueAchievements. Every guide is written for this entry, in its own words, and cites its sources.</p>
+  <p>This guide is static files only — it works with the network off and sends nothing anywhere. Progress is saved in this browser. No Rockstar Games logo or official artwork is used.</p>
+  <p class="footer-keys">Shortcuts: <kbd>1</kbd>–<kbd>9</kbd> views · <kbd>/</kbd> search · <kbd>E</kbd> export · <kbd>?</kbd> help</p>
 </footer>
+<dialog id="help-dialog">
+  <h2>Keyboard shortcuts</h2>
+  <ul class="steps">
+    <li><kbd>1</kbd>–<kbd>9</kbd> — switch views: checklist, roadmap, stages, missables, stats, planner, surprise me, history, settings</li>
+    <li><kbd>/</kbd> — focus the checklist search</li>
+    <li><kbd>E</kbd> — export progress as JSON</li>
+    <li><kbd>?</kbd> — show this help</li>
+  </ul>
+  <form method="dialog"><button class="btn-primary">Close</button></form>
+</dialog>
 <script type="module" src="js/main.js"></script>
 </body>
 </html>

@@ -1,126 +1,106 @@
-// Settings and save: spoiler toggle, theme, export / import of progress, and reset.
-// Progress lives in localStorage; export writes a file, import reads one back.
-import { store, downloadJson } from '../store.js';
+// Settings view: the spoiler switch, progress export and import, the
+// reset button, and the shortcuts list. Nothing here leaves the browser:
+// export downloads a file, import reads a file the player picks.
+import { exportJson, importJson, resetState } from "../store.js";
+import { buildMarkdown } from "../export-md.js";
 
-function el(tag, cls, text) {
-  const n = document.createElement(tag);
-  if (cls) n.className = cls;
-  if (text != null) n.textContent = text;
-  return n;
+function esc(s) {
+  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-export function renderSettings(view, data) {
-  view.replaceChildren();
-  const grid = el('div', 'settings-grid');
+function download(filename, text, type) {
+  const blob = new Blob([text], { type: type || "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
 
-  const spoilers = el('section');
-  spoilers.append(el('h2', '', 'Spoilers'));
-  spoilers.append(el('p', '', 'When spoilers are on, hidden story trophies stay masked — name and description replaced — until you earn them. The other 27 trophies are never hidden.'));
-  const sw = el('label', 'switch');
-  const box = document.createElement('input');
-  box.type = 'checkbox';
-  box.checked = store.settings.spoilers;
-  box.addEventListener('change', () => {
-    store.settings.spoilers = box.checked;
-    store.save();
-    document.dispatchEvent(new CustomEvent('progress-changed'));
+export function renderSettings(root, app) {
+  const { trophies, state } = app;
+  const done = Object.keys(state.earned).length;
+  const size = (() => {
+    try {
+      return (localStorage.getItem("sunset-platinum-v2") || "").length;
+    } catch (err) {
+      return 0;
+    }
+  })();
+
+  root.innerHTML = `
+    <section class="view-head">
+      <h2>Settings</h2>
+      <p class="view-sub">Your progress lives in this browser's localStorage (${done} of ${trophies.length} earned, ${size} bytes stored). Nothing is sent anywhere.</p>
+    </section>
+    <section class="settings-block">
+      <h3>Spoilers</h3>
+      <label class="toggle-row">
+        <input type="checkbox" data-spoiler-toggle${state.spoilers ? " checked" : ""}>
+        <span>Hide story trophy names and descriptions until they are earned</span>
+      </label>
+      <p>With spoilers on, the 17 story trophies show as "Hidden story trophy" until you tick them earned. Their guides stay hidden too. Turn it off to see the whole list at once — the mission and chapter names are spoilers.</p>
+    </section>
+    <section class="settings-block">
+      <h3>Export</h3>
+      <p>Download your progress to keep it or move it to another browser.</p>
+      <p>
+        <button class="btn-primary" data-export-json>Export progress (.json)</button>
+        <button class="btn" data-export-md>Export checklist (.md)</button>
+      </p>
+    </section>
+    <section class="settings-block">
+      <h3>Import</h3>
+      <p>Import a .json file exported by this guide. Earned trophies in the file are merged into your current progress.</p>
+      <p><input type="file" accept=".json,application/json" data-import-file></p>
+      <p class="import-status" data-import-status></p>
+    </section>
+    <section class="settings-block">
+      <h3>Reset</h3>
+      <p>Clear every earned mark and start the hunt again. This cannot be undone — export first if you want a backup.</p>
+      <p><button class="btn-danger" data-reset>Reset all progress</button></p>
+    </section>
+    <section class="settings-block">
+      <h3>Keyboard shortcuts</h3>
+      <ul class="steps">
+        <li><kbd>1</kbd>–<kbd>9</kbd> — switch views (checklist, roadmap, stages, missables, stats, planner, surprise me, history, settings)</li>
+        <li><kbd>/</kbd> — focus the checklist search</li>
+        <li><kbd>E</kbd> — export progress as JSON</li>
+        <li><kbd>?</kbd> — show this help</li>
+      </ul>
+    </section>
+    <section class="settings-block">
+      <h3>About this guide</h3>
+      <p>Sunset Platinum covers all 55 PlayStation 5 trophies of Grand Theft Auto VI: 1 Platinum, 2 Gold, 6 Silver, 46 Bronze, 28 hidden. Official names, descriptions and grades are PlayStation's, taken from Exophase on 18 November 2026 and cross-checked with PSNProfiles and TrueAchievements. Every guide is written for this entry, in its own words, and cites its sources. The app is static files only and works with the network off; no Rockstar logo or official artwork is used.</p>
+    </section>`;
+
+  root.querySelector("[data-spoiler-toggle]").addEventListener("change", (e) => {
+    app.setSpoilers(e.target.checked);
   });
-  sw.append(box);
-  sw.append(document.createTextNode('Hide story trophies until earned'));
-  spoilers.append(sw);
-  grid.append(spoilers);
-
-  const theme = el('section');
-  theme.append(el('h2', '', 'Theme'));
-  theme.append(el('p', '', 'Paper is the light look; night is the dark one. The choice saves in this browser.'));
-  const night = el('button', '', store.settings.theme === 'night' ? 'Night theme (on)' : 'Switch to night theme');
-  night.type = 'button';
-  night.addEventListener('click', () => {
-    store.settings.theme = store.settings.theme === 'night' ? 'paper' : 'night';
-    store.save();
-    document.dispatchEvent(new CustomEvent('theme-changed'));
-    renderSettings(view, data);
+  root.querySelector("[data-export-json]").addEventListener("click", () => {
+    download("sunset-platinum-progress.json", exportJson(app.state));
   });
-  theme.append(night);
-  grid.append(theme);
-
-  const save = el('section');
-  save.append(el('h2', '', 'Save & export'));
-  save.append(el('p', '', `Your progress (${store.earned.size} of ${data.trophies.length} earned, plus ${Object.keys(store.notes).length} notes) is saved in this browser automatically. Export it to a file to back it up or move it to another browser.`));
-  const row = el('div', 'row');
-  const exp = el('button', 'primary', 'Export progress');
-  exp.type = 'button';
-  exp.addEventListener('click', () => downloadJson('gta6-trophy-progress.json', store.exportData()));
-  row.append(exp);
-  // Markdown export: the same progress as a plain-text checklist, grouped by
-  // roadmap stage with earned dates. The click is handled in main.js, which
-  // owns the loaded trophy list the file is built from.
-  const expMd = el('button', '', 'Export as Markdown');
-  expMd.type = 'button';
-  expMd.setAttribute('data-action', 'export-md');
-  row.append(expMd);
-  save.append(el('p', 'md-export-note', 'Markdown is a plain-text checklist: one section per roadmap stage, checked boxes for earned trophies, and your notes beside their trophy. Paste it into any note or repo.'));
-  const impLabel = el('label', '');
-  impLabel.textContent = 'Import progress ';
-  const imp = document.createElement('input');
-  imp.type = 'file';
-  imp.accept = 'application/json';
-  imp.addEventListener('change', async () => {
-    const file = imp.files[0];
+  root.querySelector("[data-export-md]").addEventListener("click", () => {
+    download("sunset-platinum-checklist.md", buildMarkdown(app.trophies, app.state), "text/markdown");
+  });
+  root.querySelector("[data-import-file]").addEventListener("change", async (e) => {
+    const file = e.target.files && e.target.files[0];
+    const status = root.querySelector("[data-import-status]");
     if (!file) return;
     try {
-      const parsed = JSON.parse(await file.text());
-      const n = store.importData(parsed, data.trophies.map((t) => t.name));
-      document.dispatchEvent(new CustomEvent('progress-changed'));
-      save.querySelector('.import-result')?.remove();
-      save.append(el('p', 'import-result', `Imported ${n} earned trophies.`));
-    } catch {
-      save.querySelector('.import-result')?.remove();
-      save.append(el('p', 'import-result', 'That file is not a Sunset Platinum export. Nothing was changed.'));
-    }
-    imp.value = '';
-  });
-  impLabel.append(imp);
-  row.append(impLabel);
-  save.append(row);
-  grid.append(save);
-
-  const danger = el('section');
-  danger.append(el('h2', '', 'Start over'));
-  danger.append(el('p', '', 'Clears every earned tick and note in this browser. This cannot be undone — export first if you want a backup.'));
-  const reset = el('button', '', 'Reset all progress');
-  reset.type = 'button';
-  reset.addEventListener('click', () => {
-    if (window.confirm('Clear all earned trophies and notes?')) {
-      store.reset();
-      document.dispatchEvent(new CustomEvent('progress-changed'));
-      renderSettings(view, data);
+      const text = await file.text();
+      app.replaceState(importJson(text));
+      status.textContent = "Imported " + file.name + " — progress merged.";
+    } catch (err) {
+      status.textContent = "Could not import that file: " + err.message;
     }
   });
-  danger.append(reset);
-  grid.append(danger);
-
-  const about = el('section');
-  about.append(el('h2', '', 'About this guide'));
-  about.append(el('p', '', '55 trophies: 1 platinum, 2 gold, 6 silver, 46 bronze; 28 hidden on PlayStation until earned; none online. Names, descriptions, grades and PSN progress targets were verified against Exophase and PSNProfiles on 19 November 2026. Guides are written in our own words and cite their sources; five trophies are still unconfirmed in every guide and say so plainly.'));
-  grid.append(about);
-
-  const keys = el('section');
-  keys.append(el('h2', '', 'Keyboard shortcuts'));
-  keys.append(el('p', '', 'These work on the Checklist view and never fire while you type in a box.'));
-  const list = el('ul', 'sources');
-  for (const [key, action] of [
-    ['/', 'Focus the search box'],
-    ['j / k', 'Move the selection down / up the trophy list'],
-    ['e', 'Toggle earned on the selected trophy'],
-    ['Esc', 'Close the open guide pane'],
-  ]) {
-    const li = document.createElement('li');
-    li.textContent = `${key} — ${action}`;
-    list.append(li);
-  }
-  keys.append(list);
-  grid.append(keys);
-
-  view.append(grid);
+  root.querySelector("[data-reset]").addEventListener("click", () => {
+    if (window.confirm("Reset all progress? This clears every earned mark.")) {
+      app.replaceState(resetState());
+    }
+  });
 }

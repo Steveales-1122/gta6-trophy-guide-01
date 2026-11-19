@@ -1,50 +1,90 @@
-// Shared constants for the Sunset Platinum guide: storage keys, kinds, grades and the roadmap stages.
-export const STORAGE_KEY = 'sunset-platinum-v1';
-export const SETTINGS_KEY = 'sunset-platinum-settings-v1';
+// Shared constants for the Sunset Platinum guide.
+// Every value here is written for this entry; nothing is loaded from outside.
+export const STORAGE_KEY = "sunset-platinum-v2";
+export const DATA_URL = "data/trophies.json";
+export const APP_NAME = "Sunset Platinum";
+export const APP_TAGLINE = "An offline GTA VI trophy guide and tracker for all 55 PlayStation 5 trophies";
 
-export const GRADES = ['platinum', 'gold', 'silver', 'bronze'];
+// Grade labels in the order the game lists them, with the points this
+// guide uses for its progress math (a rough weight, not an official score).
+export const GRADES = ["Platinum", "Gold", "Silver", "Bronze"];
+export const GRADE_POINTS = { Platinum: 0, Gold: 90, Silver: 30, Bronze: 15 };
 
+// Filter kinds the checklist offers. "online" is deliberately empty:
+// the game has no online trophies, and the filter says so when picked.
 export const KINDS = [
-  { id: 'story', label: 'Story' },
-  { id: 'collectibles', label: 'Collectibles' },
-  { id: 'activities', label: 'Activities' },
-  { id: 'missable', label: 'Missable' },
-  { id: 'online', label: 'Online' },
+  { id: "all", label: "All trophies" },
+  { id: "story", label: "Story" },
+  { id: "missable", label: "Missable" },
+  { id: "collectible", label: "Collectibles" },
+  { id: "activity", label: "Activities" },
+  { id: "robbery", label: "Robberies" },
+  { id: "combat", label: "Combat" },
+  { id: "exploration", label: "Exploration" },
+  { id: "money", label: "Money" },
+  { id: "secret", label: "Secret" },
+  { id: "online", label: "Online" },
+  { id: "platinum", label: "Platinum path" },
 ];
 
-// The roadmap to the platinum, built from the official trophy descriptions:
+// The six roadmap stages, in the order the guide recommends playing them.
+export const STAGES = [
+  {
+    id: 1,
+    title: "Play the story",
+    blurb:
+      "Chapters 1 to 4 and the final mission. Make a manual save at the start of every chapter — the game has no mission replay.",
+  },
+  {
+    id: 2,
+    title: "Strangers and side strands",
+    blurb:
+      "Finish the stranger mission strands — Andy, Kenton, Billy, Randy, Tyrone and Bret — for 8 strands in all.",
+  },
+  {
+    id: 3,
+    title: "See all of Leonida",
+    blurb:
+      "Explore every region and sweep the collectibles: WAiNK spots, card sets, vehicles, meditation spots and garages.",
+  },
+  {
+    id: 4,
+    title: "Crime pays",
+    blurb:
+      "Robberies and money: bank vaults, the armored truck, the jewelry store, one illegal operation per gang, and laundering.",
+  },
+  {
+    id: 5,
+    title: "Master the activities",
+    blurb:
+      "The long grinds and the skill tests: 250 stunts, 42 shooting-range golds, races, drone races, fishing and challenges.",
+  },
+  {
+    id: 6,
+    title: "Secrets and the Platinum",
+    blurb:
+      "The eight cryptic 5G secret trophies, then 100% completion for A Long Road — and the Platinum pops with it.",
+  },
+];
+
+// Sources the guides cite, with a link only where this entry verified one.
+// A name with no link is still a citation: the reader can search it.
+export const SOURCE_LINKS = {
+  "Exophase (via Planet GTA 6)": "https://www.planetgta6.com/en/gta-6-trophies/",
+  "Output Lag": "https://outputlag.com/guides/gta-6-trophy-list/",
+  "GTA Vibes": "https://www.gtavibes.com/guides/gta-6-trophy-list-achievements",
+};
+
+// Views the app routes to, in nav order. The detail view is reached by
+// clicking a trophy and is not a nav tab.
 export const VIEWS = [
-  { id: 'checklist', label: 'Checklist', route: '#/checklist' },
-  { id: 'roadmap', label: 'Roadmap', route: '#/roadmap' },
-  { id: 'missables', label: 'Missables', route: '#/missables' },
-  { id: 'next', label: 'Next up', route: '#/next' },
-  { id: 'stages', label: 'Stages', route: '#/stages' },
-  { id: 'timeline', label: 'Earned history', route: '#/timeline' },
-  { id: 'stats', label: 'Stats', route: '#/stats' },
-  { id: 'picker', label: 'Surprise me', route: '#/picker' },
-  { id: 'settings', label: 'Settings & save', route: '#/settings' },
-];
-
-// The roadmap to the platinum, built from the official trophy descriptions:
-// story chapters and missions first, then strangers, then the open-world grind.
-export const ROADMAP = [
-  { n: 1, title: 'Play the story', note: 'Chapters 1 to 4, the named missions and the final mission. Twelve trophies, all unmissable — just play. Do the first meditation in Chapter 1 while you are there (see Missables).' },
-  { n: 2, title: 'Strangers of Leonida', note: 'Eight stranger mission strands, five of them ending in a named final mission. Start each strand as soon as it unlocks: their windows are tied to story progress.' },
-  { n: 3, title: 'Try everything once', note: 'One try of each activity type, an arcade game, a fishing challenge against Cal, and the bowling alley and showroom oddities. Seven trophies, all low effort.' },
-  { n: 4, title: 'Races, stunts and the range', note: '250 stunts, 20 different race wins, a drone-race win at all 14 Top Fun locations, and gold medals in all 42 Shooting Range challenges.' },
-  { n: 5, title: 'Out in the open', note: 'The collection sweep: 100 vehicles discovered, 100 WAiNK locations, 3 card sets, all 18 meditation spots, 10 vehicles registered, and every corner of Leonida explored.' },
-  { n: 6, title: 'Robberies', note: 'Five bank vaults, an armored truck, a jewelry store done quietly, three shops in a row with your partner, one illegal operation per gang, plus the airport jet and the tank.' },
-  { n: 7, title: 'Money and property', note: 'Launder $250,000 in Marked Bills, spend $100,000 across the shops, and buy all 8 garages. These build up while you do everything else.' },
-  { n: 8, title: 'The long tail', note: 'Fifty challenges, 500 actions that shape your Criminal Profile, maxed Strength for both characters, and the two story-flavoured secret trophies nobody has pinned down yet.' },
-  { n: 9, title: 'Platinum', note: 'Finish the 100% checklist after the story — A Long Road, the gold for 100% completion — and Vice Got a Price! pops with it.' },
-];
-
-export const MISSABLE_INTRO = 'Only one trophy is reported as possibly missable, and five more sit behind stranger chains with story-tied windows. Everything else can be earned after the credits, in free roam.';
-
-// The two views added 19 Nov 2026: Stages (the checklist grouped by roadmap
-// stage) and Earned history (earned trophies in the order they were earned).
-// Kept as a registry so the nav, the router and the page title all agree.
-export const EXTRA_VIEWS = [
-  { id: 'stages', label: 'Stages', route: '#/stages' },
-  { id: 'timeline', label: 'Earned history', route: '#/timeline' },
+  { id: "checklist", label: "Checklist", key: "1" },
+  { id: "roadmap", label: "Roadmap", key: "2" },
+  { id: "stages", label: "Stages", key: "3" },
+  { id: "missables", label: "Missables", key: "4" },
+  { id: "stats", label: "Stats", key: "5" },
+  { id: "planner", label: "Planner", key: "6" },
+  { id: "picker", label: "Surprise me", key: "7" },
+  { id: "timeline", label: "History", key: "8" },
+  { id: "settings", label: "Settings", key: "9" },
 ];
