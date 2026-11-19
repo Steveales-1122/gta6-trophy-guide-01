@@ -97,6 +97,21 @@ export function renderStats(view, data) {
     .filter((t) => !earned.has(t.name))
     .sort(gradeOrder)
     .slice(0, 8);
+  // Latest earned: the most recent dated trophy, so the dashboard shows the
+  // player's last win. Undated trophies (earned before tracking) never count
+  // as "latest" — their date is unknown.
+  const datedEarned = trophies
+    .filter((t) => earned.has(t.name) && store.earnedWhen(t.name))
+    .sort((a, b) => store.earnedWhen(b.name) - store.earnedWhen(a.name));
+  const latestBlock = el('section', 'stats-block');
+  latestBlock.append(el('h2', '', 'Latest earned'));
+  if (!datedEarned.length) {
+    latestBlock.append(el('p', 'count-line', earned.size ? 'Your earned trophies were ticked before this tracker kept dates — see Earned history for the full list.' : 'Nothing earned yet.'));
+  } else {
+    const t = datedEarned[0];
+    latestBlock.append(el('p', 'count-line', `${visibleName(t, s, earned)} — ${store.earnedWhenLabel(t.name)}. See Earned history for every trophy in the order it was earned.`));
+  }
+  view.append(latestBlock);
   const rareBlock = el('section', 'stats-block');
   rareBlock.append(el('h2', '', 'Rarest still unearned'));
   if (!rarest.length) {

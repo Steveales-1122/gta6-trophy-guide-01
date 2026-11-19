@@ -21,6 +21,8 @@ function pickOne(trophies) {
 export function renderPicker(view, data) {
   view.replaceChildren();
   view.append(el('p', 'count-line', 'Stuck for what to do next? Draw a random trophy you have not earned yet. Spoiler-blocked story trophies never come up.'));
+  // A progress reminder beside the draw, so a lucky pick lands in context.
+  view.append(el('p', 'count-line', `${store.earned.size} of ${data.trophies.length} earned — ${data.trophies.length - store.earned.size} left in the hat.`));
 
   const card = el('section', 'picker-card');
   view.append(card);

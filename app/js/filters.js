@@ -56,3 +56,20 @@ export function earnedPercent(trophies, earned) {
   if (!trophies.length) return 0;
   return Math.round((earned.size / trophies.length) * 100);
 }
+
+// Earned trophies in the order they were earned, for the Earned-history view:
+// trophies ticked before timestamps were tracked come first (in list order,
+// their `when` is null), then the dated ones, earliest first. The store is
+// passed in so the helper reads the same timestamps the views show.
+export function earnedInOrder(trophies, store) {
+  const undated = [];
+  const dated = [];
+  for (const t of trophies) {
+    if (!store.earned.has(t.name)) continue;
+    const when = store.earnedWhen(t.name);
+    if (when) dated.push({ trophy: t, when });
+    else undated.push({ trophy: t, when: null });
+  }
+  dated.sort((a, b) => a.when - b.when);
+  return [...undated, ...dated];
+}

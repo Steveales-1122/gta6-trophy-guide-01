@@ -18,6 +18,8 @@ export const VIEWS = [
   { id: 'roadmap', label: 'Roadmap', route: '#/roadmap' },
   { id: 'missables', label: 'Missables', route: '#/missables' },
   { id: 'next', label: 'Next up', route: '#/next' },
+  { id: 'stages', label: 'Stages', route: '#/stages' },
+  { id: 'timeline', label: 'Earned history', route: '#/timeline' },
   { id: 'stats', label: 'Stats', route: '#/stats' },
   { id: 'picker', label: 'Surprise me', route: '#/picker' },
   { id: 'settings', label: 'Settings & save', route: '#/settings' },
@@ -38,3 +40,11 @@ export const ROADMAP = [
 ];
 
 export const MISSABLE_INTRO = 'Only one trophy is reported as possibly missable, and five more sit behind stranger chains with story-tied windows. Everything else can be earned after the credits, in free roam.';
+
+// The two views added 19 Nov 2026: Stages (the checklist grouped by roadmap
+// stage) and Earned history (earned trophies in the order they were earned).
+// Kept as a registry so the nav, the router and the page title all agree.
+export const EXTRA_VIEWS = [
+  { id: 'stages', label: 'Stages', route: '#/stages' },
+  { id: 'timeline', label: 'Earned history', route: '#/timeline' },
+];

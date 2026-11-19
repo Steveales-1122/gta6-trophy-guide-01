@@ -43,3 +43,9 @@ export function unearnedByGrade(trophies, earned, grades) {
   }
   return out;
 }
+
+// The trophies of one roadmap stage, in checklist order — the grouping the
+// Stages view and the Markdown export both build from.
+export function trophiesByStage(trophies, stageNumber) {
+  return trophies.filter((t) => t.stage === stageNumber);
+}

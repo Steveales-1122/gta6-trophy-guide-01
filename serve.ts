@@ -66,4 +66,5 @@ createServer((request, response) => {
   createReadStream(file).pipe(response);
 }).listen(port, '127.0.0.1', () => {
   console.log(`app/ is on http://localhost:${port}`);
+  console.log(`Serving the Sunset Platinum guide from ${root} — open http://localhost:${port} in a desktop browser.`);
 });

@@ -19,6 +19,14 @@ export function renderPlanner(view, data) {
     return;
   }
   view.append(el('p', 'count-line', 'Your next ten, in roadmap order. Story trophies come first because they are unmissable and unlock the rest of the game.'));
+  // Point at the Stages view: the same order, grouped so the player can see
+  // which stage each of these ten belongs to.
+  const stagesLink = el('p', 'count-line', '');
+  const stagesA = document.createElement('a');
+  stagesA.href = '#/stages';
+  stagesA.textContent = 'See the same order grouped by stage →';
+  stagesLink.append(stagesA);
+  view.append(stagesLink);
   // Rough time hint: story wins are quick, the grind stages are not.
   // These are our own estimates, not PlayStation figures.
   const grindStages = new Set([4, 5, 8]);

@@ -2,6 +2,8 @@
 //   /  focus the search box
 //   j / k  move the selection down / up the visible trophy rows
 //   e  toggle earned on the selected trophy
+//   s  open the Stages view
+//   h  open the Earned-history view
 //   Escape  close the detail pane (handled there too — this is the fallback)
 // Shortcuts stay silent while the user types in an input, textarea or select,
 // so typing a note or a search never toggles anything by accident.
@@ -53,6 +55,16 @@ export function initShortcuts(data) {
       if (!box) return;
       box.checked = !box.checked;
       box.dispatchEvent(new Event('change', { bubbles: true }));
+      return;
+    }
+    // Jump keys: 's' for the Stages view, 'h' for the Earned-history view.
+    // They never fire while typing, like every other shortcut here.
+    if (e.key === 's') {
+      location.hash = '#/stages';
+      return;
+    }
+    if (e.key === 'h') {
+      location.hash = '#/timeline';
     }
   });
 }

@@ -19,7 +19,7 @@
 // Outside the grader's container, MAKEFUN_OUTPUT_DIR stands in for /output:
 //   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
 
-import { cpSync, existsSync, mkdirSync, writeFileSync, readdirSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, writeFileSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildDossier } from './vendor/makefun-frontend.ts';
@@ -39,6 +39,14 @@ if (existsSync(join(here, 'screenshots'))) {
   if (shots.length > 4) {
     throw new Error(`too many screenshots: ${shots.length} in screenshots/ (max 4) — remove ${shots.length - 4} before handing in`);
   }
+}
+
+// Refuse a trophy list that is not exactly the 55 official trophies: a
+// missing or extra trophy would hand in a guide that lies about the set.
+// The count is checked from the same file the app loads at run time.
+const trophyDoc = JSON.parse(readFileSync(join(here, 'app', 'data', 'trophies.json'), 'utf-8'));
+if (!Array.isArray(trophyDoc.trophies) || trophyDoc.trophies.length !== 55) {
+  throw new Error(`trophy list must hold exactly 55 trophies, found ${Array.isArray(trophyDoc.trophies) ? trophyDoc.trophies.length : 'none'} — re-verify against Exophase before handing in`);
 }
 
 // The scorer's own caps (reference/gate.json): only text_max_bytes shapes the bytes; the others refuse an entry the

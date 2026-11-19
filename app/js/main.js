@@ -4,6 +4,8 @@ import { loadTrophies } from './data.js';
 import { store } from './store.js';
 import { renderChecklist } from './views/checklist.js';
 import { renderRoadmap } from './views/roadmap.js';
+import { renderStages } from './views/stages.js';
+import { renderTimeline } from './views/timeline.js';
 import { renderMissables } from './views/missables.js';
 import { renderPlanner } from './views/planner.js';
 import { renderSettings } from './views/settings.js';
@@ -11,6 +13,7 @@ import { renderStats } from './views/stats.js';
 import { renderPicker } from './views/picker.js';
 import { initShortcuts } from './keys.js';
 import { openDetail, closeDetail } from './views/detail.js';
+import { buildMarkdown, downloadMarkdown } from './export-md.js';
 
 const view = document.getElementById('view');
 const earnedCount = document.getElementById('earnedCount');
@@ -52,6 +55,8 @@ function setActiveTab(tab) {
     roadmap: 'Roadmap',
     missables: 'Missables',
     next: 'Next up',
+    stages: 'Stages',
+    timeline: 'Earned history',
     stats: 'Stats',
     picker: 'Surprise me',
     settings: 'Settings & save',
@@ -75,6 +80,8 @@ function route(data) {
   const tab = hash.replace(/^#\//, '').split('/')[0] || 'checklist';
   setActiveTab(tab);
   if (tab === 'roadmap') renderRoadmap(view, data);
+  else if (tab === 'stages') renderStages(view, data);
+  else if (tab === 'timeline') renderTimeline(view, data);
   else if (tab === 'missables') renderMissables(view, data);
   else if (tab === 'next') renderPlanner(view, data);
   else if (tab === 'stats') renderStats(view, data);
@@ -95,4 +102,15 @@ themeToggle.addEventListener('click', () => {
   store.settings.theme = store.settings.theme === 'night' ? 'paper' : 'night';
   store.save();
   applyTheme();
+});
+
+// Markdown export, wired once here so any view can offer it: a button with
+// data-action="export-md" downloads the current progress as a .md checklist.
+// The download needs the loaded trophy list, so the handler lives in main.
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-action="export-md"]');
+  if (!btn) return;
+  downloadMarkdown('gta6-trophy-progress.md', buildMarkdown(data));
+  btn.textContent = 'Markdown downloaded ✓';
+  setTimeout(() => { btn.textContent = 'Export as Markdown'; }, 1500);
 });

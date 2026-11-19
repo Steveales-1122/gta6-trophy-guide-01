@@ -32,6 +32,21 @@ export function exportVersionOk(data) {
 
 export const store = {
   earned: new Set(readJson(STORAGE_KEY, []).filter((n) => typeof n === 'string')),
+  // Earned timestamps, added 19 Nov 2026 for the Earned-history view: name -> ISO
+  // date string, or absent when the trophy was ticked before tracking began.
+  // Old saves carry no timestamps, so those trophies show as "earned before
+  // tracking" — the date is never invented.
+  earnedAt: (() => {
+    const raw = readJson(STORAGE_KEY + '-earned-at', {});
+    const earned = new Set(readJson(STORAGE_KEY, []).filter((n) => typeof n === 'string'));
+    const kept = {};
+    if (raw && typeof raw === 'object') {
+      for (const [name, at] of Object.entries(raw)) {
+        if (earned.has(name) && typeof at === 'string' && !Number.isNaN(Date.parse(at))) kept[name] = at;
+      }
+    }
+    return kept;
+  })(),
   notes: readJson(STORAGE_KEY + '-notes', {}),
   settings: Object.assign(
     { spoilers: false, theme: 'paper', kind: 'all', grade: 'all', state: 'all', missableOnly: false, query: '' },
@@ -40,14 +55,38 @@ export const store = {
 
   save() {
     writeJson(STORAGE_KEY, [...this.earned]);
+    writeJson(STORAGE_KEY + '-earned-at', this.earnedAt);
     writeJson(STORAGE_KEY + '-notes', this.notes);
     writeJson(SETTINGS_KEY, this.settings);
   },
 
   toggle(name) {
-    if (this.earned.has(name)) this.earned.delete(name);
-    else this.earned.add(name);
+    if (this.earned.has(name)) {
+      this.earned.delete(name);
+      delete this.earnedAt[name];
+    } else {
+      this.earned.add(name);
+      this.earnedAt[name] = new Date().toISOString();
+    }
     this.save();
+  },
+
+  // When a trophy was earned, as a Date, or null when it was ticked before
+  // timestamps were tracked (or is not earned at all).
+  earnedWhen(name) {
+    if (!this.earned.has(name)) return null;
+    const at = this.earnedAt[name];
+    if (typeof at !== 'string') return null;
+    const d = new Date(at);
+    return Number.isNaN(d.getTime()) ? null : d;
+  },
+
+  // Short label for a trophy's earned date: "12 Nov 2026" or the honest
+  // "earned before tracking" when no timestamp was ever recorded.
+  earnedWhenLabel(name) {
+    const d = this.earnedWhen(name);
+    if (!d) return 'earned before tracking';
+    return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
   },
 
   setNote(name, text) {
@@ -58,6 +97,7 @@ export const store = {
 
   reset() {
     this.earned = new Set();
+    this.earnedAt = {};
     this.notes = {};
     this.save();
   },
@@ -69,6 +109,9 @@ export const store = {
       version: 1,
       exportedAt: new Date().toISOString(),
       earned: [...this.earned].sort(),
+      // Earned timestamps travel with the export; names without one import
+      // back as "earned before tracking", never with an invented date.
+      earnedAt: this.earnedAt,
       notes: this.notes,
       settings: this.settings,
     };
@@ -81,6 +124,14 @@ export const store = {
     const known = new Set(knownNames);
     const earned = data.earned.filter((n) => typeof n === 'string' && known.has(n));
     this.earned = new Set(earned);
+    this.earnedAt = {};
+    if (data.earnedAt && typeof data.earnedAt === 'object') {
+      for (const [name, at] of Object.entries(data.earnedAt)) {
+        if (this.earned.has(name) && typeof at === 'string' && !Number.isNaN(Date.parse(at))) {
+          this.earnedAt[name] = at;
+        }
+      }
+    }
     this.notes = {};
     if (data.notes && typeof data.notes === 'object') {
       for (const [name, text] of Object.entries(data.notes)) {

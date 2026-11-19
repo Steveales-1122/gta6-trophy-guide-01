@@ -52,6 +52,14 @@ export function renderSettings(view, data) {
   exp.type = 'button';
   exp.addEventListener('click', () => downloadJson('gta6-trophy-progress.json', store.exportData()));
   row.append(exp);
+  // Markdown export: the same progress as a plain-text checklist, grouped by
+  // roadmap stage with earned dates. The click is handled in main.js, which
+  // owns the loaded trophy list the file is built from.
+  const expMd = el('button', '', 'Export as Markdown');
+  expMd.type = 'button';
+  expMd.setAttribute('data-action', 'export-md');
+  row.append(expMd);
+  save.append(el('p', 'md-export-note', 'Markdown is a plain-text checklist: one section per roadmap stage, checked boxes for earned trophies, and your notes beside their trophy. Paste it into any note or repo.'));
   const impLabel = el('label', '');
   impLabel.textContent = 'Import progress ';
   const imp = document.createElement('input');

@@ -126,6 +126,9 @@ export function renderChecklist(view, data) {
     if (mt) meta.append(mt);
     if (t.target) meta.append(el('span', 'tag', `PSN target: ${t.target.toLocaleString()}`));
     if (store.notes[t.name]) meta.append(el('span', 'tag', 'Has a note'));
+    // Earned date, where the tracker knows it: trophies ticked before
+    // timestamps were kept say "earned before tracking" instead.
+    if (earned) meta.append(el('span', 'tag', `Earned ${store.earnedWhenLabel(t.name)}`));
     body.append(meta);
     if (!isSpoiled(t, s, store.earned)) {
       body.append(el('p', 'trophy-guide', t.guide));

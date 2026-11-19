@@ -21,6 +21,9 @@ function trophyCard(data, t, heading) {
   card.append(name);
   card.append(el('p', 'trophy-desc', visibleDescription(t, store.settings, store.earned)));
   card.append(el('p', 'trophy-guide', t.guide));
+  // Earned date, where the tracker knows it — the one date that matters most
+  // for a missable is whether it is already safely in the bag.
+  if (earned) card.append(el('p', 'stage-note', `Earned ${store.earnedWhenLabel(t.name)}.`));
   const btn = el('button', earned ? '' : 'primary', earned ? '✓ Earned' : 'Mark as earned');
   btn.type = 'button';
   btn.addEventListener('click', () => {

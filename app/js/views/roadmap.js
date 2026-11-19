@@ -14,6 +14,14 @@ function el(tag, cls, text) {
 export function renderRoadmap(view, data) {
   view.replaceChildren();
   view.append(el('p', 'count-line', 'The order to earn them in: story first, strangers while the story is still running, then the open-world grind, and 100% completion last. Each stage lists its trophies; tick them off in the Checklist as you go.'));
+  // The Stages view shows this same order as collapsible groups with
+  // checkboxes, so the player can work through it without leaving the page.
+  const stagesLink = el('p', 'count-line', '');
+  const stagesA = document.createElement('a');
+  stagesA.href = '#/stages';
+  stagesA.textContent = 'Open the collapsible Stages view →';
+  stagesLink.append(stagesA);
+  view.append(stagesLink);
 
   for (const stage of ROADMAP) {
     const members = data.trophies.filter((t) => t.stage === stage.n);

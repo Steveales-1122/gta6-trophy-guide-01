@@ -80,6 +80,14 @@ function render() {
   if (t.target) {
     panel.append(el('p', '', `PSN progress target: ${t.target.toLocaleString()} (tracked on your PlayStation profile).`));
   }
+  // When this trophy was earned, if the tracker knows: the Earned-history
+  // view lists every earned trophy in this same order.
+  if (earned) {
+    const when = store.earnedWhen(t.name);
+    panel.append(el('p', '', when
+      ? `Earned ${when.toLocaleString(undefined, { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}.`
+      : 'Earned before this tracker started keeping dates.'));
+  }
   if (t.missable === 'yes') {
     panel.append(el('p', '', 'Possibly missable: the first meditation spot is reported to disappear after Chapter 1. Do it as soon as it is offered.'));
   } else if (t.missable === 'window') {

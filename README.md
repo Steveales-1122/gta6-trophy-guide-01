@@ -23,7 +23,17 @@ Then open http://localhost:8080. Or open `app/index.html` from any static server
 - **Next up** — a planner listing your next ten unearned trophies in roadmap order.
 - **Stats** — a dashboard with a progress ring, progress by grade and by kind, hidden-vs-revealed counts, per-roadmap-stage bars, and the rarest trophies still unearned.
 - **Surprise me** — draws a random unearned trophy (never a spoiler-blocked one) and lets you pick another or mark it earned on the spot.
+- **Stages** — the checklist grouped by the nine roadmap stages. Each stage is collapsible, shows its own progress bar and earned/total count, and the first stage with trophies still to earn is highlighted as the next one to work on. You can tick trophies off right here; progress is shared with the Checklist.
+- **Earned history** — every earned trophy in the order it was earned, with the date and time it was ticked. Trophies ticked before the tracker started keeping dates are listed first as "earned before tracking" — no date is ever invented. The Stats dashboard also shows your latest earned trophy.
 - **Settings & save** — spoiler toggle, paper/night theme, export progress to a file and import it back, per-trophy notes, reset.
+
+## Export as Markdown
+
+Settings & save has an **Export as Markdown** button next to the JSON export. It downloads `gta6-trophy-progress.md`: a plain-text checklist with one section per roadmap stage, checked boxes for earned trophies, the earned date where the tracker knows it, and your own notes beside their trophy — ready to paste into a note, a gist, or a repo. The JSON export carries the same earned timestamps, so importing it back keeps your history.
+
+How the dates work: the moment you tick a trophy earned, the tracker records the current date and time in your browser (localStorage, beside the earned list). Untick it and the date is deleted with it. Trophies earned before this version — or imported from an export without dates — have no date stored and are shown as "earned before tracking" in the Checklist, the Stages view, the guide pane, and Earned history. Nothing in the app ever guesses a date.
+
+Stages and Earned history need no setup: they read the same saved progress as the Checklist, work fully offline, and follow the spoiler setting — a hidden story trophy stays masked until earned, even in your own history list.
 
 ## Keyboard shortcuts
 
@@ -34,6 +44,8 @@ These work on the Checklist view and never fire while you type in a box:
 | `/` | Focus the search box |
 | `j` / `k` | Move the selection down / up the trophy list |
 | `e` | Toggle earned on the selected trophy |
+| `s` | Open the Stages view |
+| `h` | Open the Earned-history view |
 | `Esc` | Close the open guide pane |
 
 The checklist also has a **Collapse earned** toggle that hides ticked rows, and each guide pane has a **Copy trophy summary** button. Printing the checklist gives a clean paper list with no navigation or buttons.
