@@ -1,33 +1,15 @@
-// Timeline view: earned history — every trophy you ticked off, in the
-// order you earned it, with the date it landed.
-import { getState, earnedList } from "../store.js";
-import { byId } from "../data.js";
-
-export function renderTimeline(el, ctx) {
-  const wrap = document.createElement("div");
-  wrap.className = "view timeline-view";
-  wrap.innerHTML = `<h2>Earned history</h2><p>Every trophy you ticked off, in the order it landed. Times come from this browser's saved progress.</p>`;
-  const list = earnedList();
-  if (!list.length) {
-    wrap.innerHTML += `<p class="note">Nothing earned yet. Tick a trophy off in the checklist and it will show up here with the time.</p>`;
-    el.appendChild(wrap);
-    return;
+// History: every trophy ticked off, in the order it landed.
+export function renderTimeline(ctx) {
+  const { state, esc } = ctx;
+  if (!state.store.history.length) {
+    return `<h2>History</h2><p class="lede">Nothing earned yet. Tick a trophy off in the checklist and it will show up here, in order.</p>`;
   }
-  const ul = document.createElement("ol");
-  ul.className = "timeline-list";
-  for (const entry of list) {
-    const t = byId(entry.id);
-    const li = document.createElement("li");
-    const when = new Date(entry.at);
-    li.innerHTML =
-      `<span class="tl-date">${escapeHtml(when.toLocaleDateString())} ${escapeHtml(when.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))}</span>` +
-      `<a href="#/trophy/${entry.id}">${escapeHtml(t ? t.name : entry.id)}</a>`;
-    ul.appendChild(li);
-  }
-  wrap.appendChild(ul);
-  el.appendChild(wrap);
-}
-
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const rows = [...state.store.history]
+    .map((h) => {
+      const t = state.trophies.find((x) => x.id === h.id);
+      const when = new Date(h.at).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
+      return `<li><strong>${t ? esc(ctx.masked(t) ? "Hidden trophy" : t.name) : "Trophy " + h.id}</strong> — ${esc(when)}</li>`;
+    })
+    .join("");
+  return `<h2>History</h2><p class="lede">${state.store.history.length} trophies earned, in the order they landed.</p><ol class="tight">${rows}</ol>`;
 }

@@ -1,22 +1,23 @@
-// Keyboard shortcuts for the guide. Typing in a field never triggers them.
-export function bindShortcuts(handlers) {
+// Keyboard shortcuts: digits switch views, / focuses the search box,
+// h toggles the spoiler setting. Nothing else listens to keys.
+import { VIEW_IDS } from "./config.js";
+
+export function installKeys(state, rerender) {
   document.addEventListener("keydown", (event) => {
-    const target = event.target;
-    const typing = target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable);
-    if (event.key === "/" && !typing) {
-      event.preventDefault();
-      handlers.focusSearch && handlers.focusSearch();
-      return;
-    }
-    if (typing || event.metaKey || event.ctrlKey || event.altKey) return;
-    if (event.key === "s" || event.key === "S") {
-      handlers.toggleSpoilers && handlers.toggleSpoilers();
-    } else if (event.key === "e" || event.key === "E") {
-      handlers.exportMarkdown && handlers.exportMarkdown();
-    } else if (event.key === "?") {
-      handlers.showShortcuts && handlers.showShortcuts();
-    } else if (/^[1-9]$/.test(event.key)) {
-      handlers.goView && handlers.goView(Number(event.key) - 1);
+    const tag = event.target && event.target.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+    if (event.key >= "1" && event.key <= String(VIEW_IDS.length)) {
+      const id = VIEW_IDS[Number(event.key) - 1];
+      if (id) location.hash = `#/${id}`;
+    } else if (event.key === "/") {
+      const box = document.querySelector('input[type="search"]');
+      if (box) {
+        event.preventDefault();
+        box.focus();
+      }
+    } else if (event.key === "h" || event.key === "H") {
+      state.store.settings.spoilers = !state.store.settings.spoilers;
+      rerender();
     }
   });
 }

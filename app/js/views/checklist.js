@@ -1,92 +1,49 @@
-// Checklist view: every trophy as a row you can tick off, with search,
-// kind filters, earned/unearned filtering and the spoiler setting applied.
-import { FILTER_DEFS, GRADE_LABEL } from "../config.js";
-import { getState, isEarned, toggleEarned } from "../store.js";
-import { applyFilters, sortForChecklist, isMasked, displayName, displayDescription } from "../filters.js";
+// The checklist: every trophy, filterable and searchable, with a tick box
+// and a guide that opens under the trophy it belongs to.
+import { KINDS, KIND_LABELS } from "../config.js";
+import { detailHtml } from "./detail.js";
 
-export function renderChecklist(el, ctx) {
-  const state = getState();
-  const { kind = "all", query = "", earned = "all", missableOnly = false } = ctx.filter;
-  let rows = sortForChecklist(applyFilters(ctx.trophies, state, { kind, query, earned, missableOnly }));
-  if (state.settings.hideEarned && earned === "all") {
-    rows = rows.filter((t) => !isEarned(t.id));
+export function renderChecklist(ctx) {
+  const { state, esc, badge, tag, displayName, displayDesc } = ctx;
+  const f = state.filter;
+  let list = ctx.applyFilter(state.trophies, f, state.store);
+  if (state.store.settings.hideEarned) list = list.filter((t) => !state.store.earned[t.id]);
+
+  const toolbar =
+    `<div class="toolbar" role="search">` +
+    `<input type="search" value="${esc(f.q)}" placeholder="Search trophies, descriptions and guides…  ( / )" aria-label="Search trophies">` +
+    `<select data-filter="kind" aria-label="Filter by kind"><option value="all">All kinds</option>` +
+    KINDS.map((k) => `<option value="${k}"${f.kind === k ? " selected" : ""}>${KIND_LABELS[k]}</option>`).join("") +
+    `</select>` +
+    `<select data-filter="grade" aria-label="Filter by grade"><option value="all">All grades</option>` +
+    ["platinum", "gold", "silver", "bronze"].map((g) => `<option value="${g}"${f.grade === g ? " selected" : ""}>${g}</option>`).join("") +
+    `</select>` +
+    `<select data-filter="earned" aria-label="Filter by earned"><option value="all">All</option>` +
+    `<option value="earned"${f.earned === "earned" ? " selected" : ""}>Earned</option>` +
+    `<option value="open"${f.earned === "open" ? " selected" : ""}>Still open</option></select>` +
+    `<label><input type="checkbox" data-action="toggle-hide-earned"${state.store.settings.hideEarned ? " checked" : ""}> Hide earned</label>` +
+    `</div>`;
+
+  if (!list.length) {
+    return `<h2>Checklist</h2><p class="lede">Tick a trophy off when it pops. Progress is saved in your browser.</p>${toolbar}<p class="empty">Nothing matches these filters. Try clearing the search or a filter.</p>`;
   }
 
-  const wrap = document.createElement("div");
-  wrap.className = "view checklist-view";
+  const rows = list.map((t) => {
+    const earned = Boolean(state.store.earned[t.id]);
+    const open = state.openId === t.id;
+    const row =
+      `<tr class="${earned ? "earned" : ""}">` +
+      `<td><input type="checkbox" data-action="earn" data-id="${t.id}"${earned ? " checked" : ""} aria-label="Mark ${esc(displayName(t))} earned"></td>` +
+      `<td><button class="tname" data-action="open" data-id="${t.id}">${esc(displayName(t))}</button>${t.missable ? ` ${tag("missable", "missable")}` : ""}</td>` +
+      `<td class="${ctx.masked(t) ? "hidden-name" : ""}">${esc(displayDesc(t))}</td>` +
+      `<td>${badge(t.grade)}</td>` +
+      `<td>${tag(t.kind)}</td></tr>`;
+    const detail = open
+      ? `<tr><td></td><td colspan="4">${detailHtml(ctx, t)}</td></tr>`
+      : "";
+    return row + detail;
+  }).join("");
 
-  const head = document.createElement("div");
-  head.className = "view-head";
-  head.innerHTML = `<h2>Checklist</h2><p>${rows.length} of ${ctx.trophies.length} trophies shown. Tick one off when it pops — progress saves in this browser.</p>`;
-  wrap.appendChild(head);
-
-  const chips = document.createElement("div");
-  chips.className = "chips";
-  for (const def of FILTER_DEFS) {
-    const b = document.createElement("button");
-    b.className = "chip" + (kind === def.id ? " active" : "");
-    b.textContent = def.label;
-    b.addEventListener("click", () => ctx.setFilter({ kind: def.id }));
-    chips.appendChild(b);
-  }
-  const miss = document.createElement("button");
-  miss.className = "chip" + (missableOnly ? " active" : "");
-  miss.textContent = "Missable only";
-  miss.addEventListener("click", () => ctx.setFilter({ missableOnly: !missableOnly }));
-  chips.appendChild(miss);
-  wrap.appendChild(chips);
-
-  const earnedRow = document.createElement("div");
-  earnedRow.className = "chips";
-  for (const [id, label] of [["all", "All"], ["earned", "Earned"], ["unearned", "Not earned"]]) {
-    const b = document.createElement("button");
-    b.className = "chip" + (earned === id ? " active" : "");
-    b.textContent = label;
-    b.addEventListener("click", () => ctx.setFilter({ earned: id }));
-    earnedRow.appendChild(b);
-  }
-  wrap.appendChild(earnedRow);
-
-  const list = document.createElement("ul");
-  list.className = "trophy-list";
-  if (!rows.length) {
-    const empty = document.createElement("li");
-    empty.className = "empty";
-    empty.textContent = kind === "online"
-      ? "No online trophies: all 55 trophies in GTA VI are offline and single-player."
-      : "Nothing matches those filters yet.";
-    list.appendChild(empty);
-  }
-  for (const t of rows) {
-    const li = document.createElement("li");
-    li.className = "trophy-row grade-" + t.grade + (isEarned(t.id) ? " earned" : "");
-    const masked = isMasked(t, state);
-    const box = document.createElement("input");
-    box.type = "checkbox";
-    box.checked = isEarned(t.id);
-    box.setAttribute("aria-label", "Mark " + t.name + " earned");
-    box.addEventListener("change", () => {
-      toggleEarned(t.id);
-      ctx.refresh();
-    });
-    const body = document.createElement("button");
-    body.className = "row-body";
-    body.addEventListener("click", () => ctx.openTrophy(t.id));
-    body.innerHTML =
-      `<span class="grade-badge">${GRADE_LABEL[t.grade]}</span>` +
-      `<span class="row-text"><span class="row-name">${escapeHtml(displayName(t, state))}</span>` +
-      `<span class="row-desc">${escapeHtml(displayDescription(t, state))}</span></span>` +
-      (t.missable ? `<span class="flag missable">Missable</span>` : "") +
-      (masked ? `<span class="flag hidden-flag">Hidden</span>` : "") +
-      (t.count ? `<span class="flag count">× ${t.count}</span>` : "");
-    li.appendChild(box);
-    li.appendChild(body);
-    list.appendChild(li);
-  }
-  wrap.appendChild(list);
-  el.appendChild(wrap);
-}
-
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  return `<h2>Checklist</h2><p class="lede">Tick a trophy off when it pops. Progress is saved in your browser. Click a name to read its guide and sources.</p>${toolbar}` +
+    `<table class="list"><thead><tr><th></th><th>Trophy</th><th>Official description</th><th>Grade</th><th>Kind</th></tr></thead><tbody>${rows}</tbody></table>`;
 }

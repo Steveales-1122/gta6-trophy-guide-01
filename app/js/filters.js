@@ -1,50 +1,25 @@
-// Filtering and spoiler handling: one place where the checklist, the stats
-// and the picker all agree on what "visible" means.
-import { FILTER_DEFS } from "./config.js";
-import { isEarned } from "./store.js";
-
-export function filterDef(id) {
-  return FILTER_DEFS.find((f) => f.id === id) || FILTER_DEFS[0];
+// The checklist's filter state: kind, grade, text search and earned filter.
+export function blankFilter() {
+  return { kind: "all", grade: "all", q: "", earned: "all" };
 }
 
-// A hidden trophy stays hidden while spoilers are on and it is not earned:
-// its name and description read as "Hidden trophy" until then.
-export function isMasked(trophy, state) {
-  if (!trophy.hidden) return false;
-  if (!state.settings.spoilers) return false;
-  return !isEarned(trophy.id);
-}
-
-export function displayName(trophy, state) {
-  return isMasked(trophy, state) ? "Hidden trophy" : trophy.name;
-}
-
-export function displayDescription(trophy, state) {
-  return isMasked(trophy, state) ? "Earn it to reveal the name and description." : trophy.description;
-}
-
-export function applyFilters(trophies, state, opts) {
-  const { kind = "all", query = "", earned = "all", missableOnly = false } = opts || {};
-  const def = filterDef(kind);
-  const q = query.trim().toLowerCase();
+export function applyFilter(trophies, filter, store) {
+  const q = filter.q.trim().toLowerCase();
   return trophies.filter((t) => {
-    if (!def.match(t)) return false;
-    if (missableOnly && !t.missable) return false;
-    if (earned === "earned" && !isEarned(t.id)) return false;
-    if (earned === "unearned" && isEarned(t.id)) return false;
+    if (filter.kind !== "all" && t.kind !== filter.kind) return false;
+    if (filter.grade !== "all" && t.grade !== filter.grade) return false;
+    if (filter.earned === "earned" && !store.earned[t.id]) return false;
+    if (filter.earned === "open" && store.earned[t.id]) return false;
     if (q) {
-      const hay = (t.name + " " + t.description + " " + t.guide + " " + t.kind).toLowerCase();
+      const hay = `${t.name} ${t.description} ${t.guide}`.toLowerCase();
       if (!hay.includes(q)) return false;
     }
     return true;
   });
 }
 
-export function sortForChecklist(trophies) {
-  const rank = { platinum: 0, gold: 1, silver: 2, bronze: 3 };
-  return [...trophies].sort((a, b) => {
-    const r = (rank[a.grade] ?? 4) - (rank[b.grade] ?? 4);
-    if (r !== 0) return r;
-    return a.name.localeCompare(b.name);
-  });
+export function kindCounts(trophies) {
+  const out = {};
+  for (const t of trophies) out[t.kind] = (out[t.kind] || 0) + 1;
+  return out;
 }

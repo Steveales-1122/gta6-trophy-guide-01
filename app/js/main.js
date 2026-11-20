@@ -1,28 +1,38 @@
-// Sunset Platinum — boot and router. Loads the trophy data, keeps the
-// header (progress, search, spoiler switch) steady, and renders one view
-// at a time from the hash: #/checklist, #/roadmap, #/missables, #/stages,
-// #/planner, #/picker, #/stats, #/timeline, #/settings, #/trophy/<id>.
-import { VIEW_DEFS } from "./config.js";
-import { loadTrophies, allTrophies } from "./data.js";
-import { loadState, getState, setSetting, getSetting, earnedCount, onChange } from "./store.js";
-import { bindShortcuts } from "./keys.js";
-import { buildMarkdown, download } from "./export-md.js";
+// Sunset Platinum: the router and the shared helpers every view uses.
+// Views are small functions that take a context and return HTML; all clicks
+// are handled here by delegation, so no view needs to know about the others.
+import { loadTrophies } from "./data.js";
+import { loadStore, saveStore, toggleEarned, earnedCount, resetStore, exportJson, importJson } from "./store.js";
+import { blankFilter, applyFilter } from "./filters.js";
+import { installKeys } from "./keys.js";
+import { exportMarkdown, download } from "./export-md.js";
+import { GRADE_POINTS, VIEW_IDS } from "./config.js";
 import { renderChecklist } from "./views/checklist.js";
-import { renderDetail } from "./views/detail.js";
 import { renderRoadmap } from "./views/roadmap.js";
-import { renderMissables } from "./views/missables.js";
 import { renderStages } from "./views/stages.js";
+import { renderMissables } from "./views/missables.js";
 import { renderPlanner } from "./views/planner.js";
 import { renderPicker } from "./views/picker.js";
 import { renderStats } from "./views/stats.js";
 import { renderTimeline } from "./views/timeline.js";
 import { renderSettings } from "./views/settings.js";
 
-const VIEWS = {
+const VIEW_LABELS = {
+  checklist: "Checklist",
+  roadmap: "Roadmap",
+  stages: "100% Stages",
+  missables: "Missables",
+  planner: "Planner",
+  picker: "What next?",
+  stats: "Stats",
+  timeline: "History",
+  settings: "Settings",
+};
+const VIEW_RENDER = {
   checklist: renderChecklist,
   roadmap: renderRoadmap,
-  missables: renderMissables,
   stages: renderStages,
+  missables: renderMissables,
   planner: renderPlanner,
   picker: renderPicker,
   stats: renderStats,
@@ -30,132 +40,175 @@ const VIEWS = {
   settings: renderSettings,
 };
 
-const filter = { kind: "all", query: "", earned: "all", missableOnly: false };
-let current = { view: "checklist", param: null };
-let trophies = [];
-let hiddenPicks = new Set();
-
-const app = document.getElementById("app");
-
-function parseHash() {
-  const hash = location.hash.replace(/^#\/?/, "");
-  const [view, param] = hash.split("/");
-  if (view === "trophy" && param) return { view: "trophy", param };
-  if (VIEWS[view]) return { view, param: null };
-  return { view: "checklist", param: null };
+export function esc(s) {
+  return String(s ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
 }
 
-function go(view, param) {
-  location.hash = "#/" + view + (param ? "/" + param : "");
+const state = {
+  trophies: [],
+  store: loadStore(),
+  filter: blankFilter(),
+  route: "checklist",
+  openId: null,
+};
+
+function masked(t) {
+  return state.store.settings.spoilers && t.hidden && !state.store.earned[t.id];
 }
 
-function refresh() {
-  render();
+function displayName(t) {
+  return masked(t) ? "Hidden trophy" : t.name;
 }
 
-function header() {
-  const total = trophies.length;
-  const earned = earnedCount();
-  const pct = total ? Math.round((earned / total) * 100) : 0;
-  return `
-    <header>
-      <div class="brand">
-        <h1>Sunset Platinum</h1>
-        <p class="tagline">GTA VI trophy guide &amp; tracker — all 55 trophies, offline</p>
-      </div>
-      <div class="progress" role="status" aria-label="${earned} of ${total} trophies earned">
-        <span class="progress-text">${earned} / ${total} · ${pct}%</span>
-        <div class="bar big"><span style="width:${pct}%"></span></div>
-      </div>
-      <div class="toolbar">
-        <input id="search" type="search" placeholder="Search trophies…  ( / )" aria-label="Search trophies" value="${escapeAttr(filter.query)}">
-        <label class="spoiler-switch"><input id="spoilers" type="checkbox" ${getSetting("spoilers") ? "checked" : ""}> Hide spoilers</label>
-      </div>
-      <nav class="tabs" aria-label="Views">
-        ${VIEW_DEFS.map((v, i) => `<a href="#/${v.id}" data-view="${v.id}" class="${current.view === v.id ? "active" : ""}">${v.label}<span class="key-hint">${i + 1}</span></a>`).join("")}
-      </nav>
-    </header>`;
+function displayDesc(t) {
+  return masked(t) ? "Hidden until earned." : t.description;
 }
 
-function render() {
-  current = parseHash();
-  const state = getState();
-  app.innerHTML = header() + `<main id="main"></main><footer><p>Sunset Platinum — an offline guide to the 55 trophies of Grand Theft Auto VI on PlayStation 5. Official names and descriptions are shown as PlayStation publishes them; every guide is written for this entry and cites its sources. No Rockstar artwork, no network requests.</p></footer>`;
-  const search = document.getElementById("search");
-  search.addEventListener("input", () => {
-    filter.query = search.value;
-    if (current.view !== "checklist") go("checklist");
-    else renderMain();
-  });
-  document.getElementById("spoilers").addEventListener("change", (e) => {
-    setSetting("spoilers", e.target.checked);
-    renderMain();
-  });
-  renderMain();
-  const active = app.querySelector(".tabs a.active");
-  if (active) active.scrollIntoView({ block: "nearest" });
+function badge(grade) {
+  return `<span class="badge ${esc(grade)}">${esc(grade)}</span>`;
 }
 
-function renderMain() {
-  const main = document.getElementById("main");
-  if (!main) return;
-  main.innerHTML = "";
+function tag(kind, extra) {
+  return `<span class="tag${extra ? " " + extra : ""}">${esc(kind)}</span>`;
+}
+
+function points() {
+  return state.trophies.reduce(
+    (sum, t) => sum + (state.store.earned[t.id] ? GRADE_POINTS[t.grade] : 0),
+    0,
+  );
+}
+
+function renderProgress() {
+  const n = earnedCount(state.store);
+  const total = state.trophies.length || 55;
+  const pct = total ? Math.round((n / total) * 100) : 0;
+  document.getElementById("progress").innerHTML =
+    `<strong>${n} / ${total}</strong> trophies earned · ${points()} points · ${pct}%` +
+    `<span class="bar"><i style="width:${pct}%"></i></span>`;
+}
+
+function renderTabs() {
+  document.getElementById("tabs").innerHTML = VIEW_IDS.map(
+    (id, i) =>
+      `<a href="#/${id}" class="${id === state.route ? "active" : ""}">${i + 1} · ${VIEW_LABELS[id]}</a>`,
+  ).join("");
+}
+
+function rerender() {
+  renderProgress();
+  renderTabs();
+  const view = document.getElementById("view");
   const ctx = {
-    trophies,
-    filter,
-    hiddenPicks,
-    setFilter: (patch) => {
-      Object.assign(filter, patch);
-      if (current.view !== "checklist") go("checklist");
-      else renderMain();
-    },
-    refresh,
-    openTrophy: (id) => go("trophy", id),
-    go,
+    state,
+    esc,
+    badge,
+    tag,
+    displayName,
+    displayDesc,
+    masked,
+    applyFilter,
   };
-  if (current.view === "trophy") renderDetail(main, ctx, current.param);
-  else VIEWS[current.view](main, ctx);
+  view.innerHTML = VIEW_RENDER[state.route](ctx);
+  const box = view.querySelector('input[type="search"]');
+  if (box && state.filter.q) box.value = state.filter.q;
 }
 
-function escapeAttr(s) {
-  return String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+function routeFromHash() {
+  const id = location.hash.replace(/^#\/?/, "").split("?")[0];
+  state.route = VIEW_IDS.includes(id) ? id : "checklist";
 }
 
-async function boot() {
-  loadState();
-  try {
-    trophies = await loadTrophies();
-  } catch (err) {
-    app.innerHTML = `<p class="error">Could not load the trophy list. Open this guide from its own folder (node serve.ts) so data/trophies.json loads.</p>`;
-    return;
-  }
-  onChange(() => {
-    const bar = app.querySelector(".progress-text");
-    if (bar) {
-      const total = trophies.length;
-      const earned = earnedCount();
-      bar.textContent = `${earned} / ${total} · ${Math.round((earned / total) * 100)}%`;
-      const fill = app.querySelector(".progress .bar span");
-      if (fill) fill.style.width = Math.round((earned / total) * 100) + "%";
+function readLaunchParams() {
+  const params = new URLSearchParams(location.search);
+  if (params.get("spoilers") === "1") state.store.settings.spoilers = true;
+  const open = Number(params.get("open"));
+  if (Number.isInteger(open) && open > 0) state.openId = open;
+}
+
+document.getElementById("view").addEventListener("click", (event) => {
+  const el = event.target.closest("[data-action]");
+  if (!el) return;
+  const action = el.dataset.action;
+  const id = Number(el.dataset.id);
+  if (action === "earn" && Number.isInteger(id)) {
+    toggleEarned(state.store, id);
+    rerender();
+  } else if (action === "open" && Number.isInteger(id)) {
+    state.openId = state.openId === id ? null : id;
+    rerender();
+  } else if (action === "view" && el.dataset.view) {
+    location.hash = `#/${el.dataset.view}`;
+  } else if (action === "export-md") {
+    download("sunset-platinum-progress.md", exportMarkdown(state.trophies, state.store), "text/markdown");
+  } else if (action === "export-json") {
+    download("sunset-platinum-progress.json", exportJson(state.store), "application/json");
+  } else if (action === "reset") {
+    if (window.confirm("Reset all progress? This clears every tick and your history.")) {
+      state.store = resetStore();
+      rerender();
     }
-  });
-  bindShortcuts({
-    focusSearch: () => {
-      const s = document.getElementById("search");
-      if (s) s.focus();
-    },
-    toggleSpoilers: () => {
-      setSetting("spoilers", !getSetting("spoilers"));
-      render();
-    },
-    exportMarkdown: () => download("sunset-platinum-progress.md", buildMarkdown(trophies), "text/markdown;charset=utf-8"),
-    showShortcuts: () => go("settings"),
-    goView: (i) => {
-      if (VIEW_DEFS[i]) go(VIEW_DEFS[i].id);
-    },
-  });
-  window.addEventListener("hashchange", render);
-  render();
-}
+  } else if (action === "toggle-spoilers") {
+    state.store.settings.spoilers = !state.store.settings.spoilers;
+    saveStore(state.store);
+    rerender();
+  } else if (action === "toggle-hide-earned") {
+    state.store.settings.hideEarned = !state.store.settings.hideEarned;
+    saveStore(state.store);
+    rerender();
+  }
+});
 
-boot();
+document.getElementById("view").addEventListener("input", (event) => {
+  const el = event.target;
+  if (el.matches('input[type="search"]')) {
+    state.filter.q = el.value;
+    rerender();
+    const box = document.querySelector('input[type="search"]');
+    if (box) {
+      box.focus();
+      box.setSelectionRange(box.value.length, box.value.length);
+    }
+  }
+});
+
+document.getElementById("view").addEventListener("change", (event) => {
+  const el = event.target;
+  if (el.dataset.filter) {
+    state.filter[el.dataset.filter] = el.value;
+    rerender();
+  }
+  if (el.id === "import-file" && el.files && el.files[0]) {
+    const file = el.files[0];
+    file.text().then((text) => {
+      try {
+        state.store = importJson(text);
+        rerender();
+      } catch {
+        window.alert("That file is not a progress export from this guide.");
+      }
+    });
+  }
+});
+
+window.addEventListener("hashchange", () => {
+  routeFromHash();
+  rerender();
+});
+
+loadTrophies()
+  .then((trophies) => {
+    state.trophies = trophies;
+    readLaunchParams();
+    routeFromHash();
+    installKeys(state, rerender);
+    rerender();
+  })
+  .catch(() => {
+    document.getElementById("view").innerHTML =
+      '<p class="empty">The trophy list did not load. Serve app/ with <code>node serve.ts</code> and reload.</p>';
+  });

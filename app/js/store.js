@@ -1,121 +1,69 @@
-// Saved progress: earned trophies with timestamps, plus the reader's
-// settings. Everything lives in localStorage under one key, so the guide
-// works offline and survives a reload. Export and import move it as JSON.
-import { STORAGE_KEY } from "./config.js";
+// Progress lives in localStorage: which trophies are earned, when each one
+// landed, and the reader's settings. Nothing leaves the browser.
+const KEY = "sunset-platinum-v1";
 
-function blankState() {
-  return {
-    earned: {},
-    settings: { spoilers: true, hideEarned: false },
-  };
+function blank() {
+  return { earned: {}, history: [], settings: { spoilers: false, hideEarned: false } };
 }
 
-let state = blankState();
-let listeners = [];
-
-export function loadState() {
+export function loadStore() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === "object") {
-        state = {
-          earned: parsed.earned && typeof parsed.earned === "object" ? parsed.earned : {},
-          settings: { ...blankState().settings, ...(parsed.settings || {}) },
-        };
-      }
-    }
-  } catch (err) {
-    state = blankState();
+    const raw = localStorage.getItem(KEY);
+    if (!raw) return blank();
+    const doc = JSON.parse(raw);
+    if (!doc || typeof doc !== "object") return blank();
+    return {
+      earned: doc.earned && typeof doc.earned === "object" ? doc.earned : {},
+      history: Array.isArray(doc.history) ? doc.history : [],
+      settings: { ...blank().settings, ...(doc.settings || {}) },
+    };
+  } catch {
+    return blank();
   }
-  return state;
 }
 
-export function getState() {
-  return state;
+export function saveStore(store) {
+  localStorage.setItem(KEY, JSON.stringify(store));
 }
 
-export function saveState() {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  } catch (err) {
-    // Storage full or blocked: the session still works in memory.
-  }
-  for (const fn of listeners) fn(state);
+export function isEarned(store, id) {
+  return Boolean(store.earned[id]);
 }
 
-export function onChange(fn) {
-  listeners.push(fn);
-  return () => {
-    listeners = listeners.filter((f) => f !== fn);
-  };
-}
-
-export function isEarned(id) {
-  return Object.prototype.hasOwnProperty.call(state.earned, id);
-}
-
-export function earnedAt(id) {
-  return state.earned[id] || null;
-}
-
-export function earnedCount() {
-  return Object.keys(state.earned).length;
-}
-
-export function toggleEarned(id) {
-  if (isEarned(id)) {
-    delete state.earned[id];
+export function toggleEarned(store, id) {
+  if (store.earned[id]) {
+    delete store.earned[id];
+    store.history = store.history.filter((h) => h.id !== id);
   } else {
-    state.earned[id] = new Date().toISOString();
+    store.earned[id] = Date.now();
+    store.history.push({ id, at: Date.now() });
   }
-  saveState();
-  return isEarned(id);
+  saveStore(store);
+  return store;
 }
 
-export function setEarned(id, when) {
-  if (when) state.earned[id] = when;
-  else delete state.earned[id];
-  saveState();
+export function earnedCount(store) {
+  return Object.keys(store.earned).length;
 }
 
-export function setSetting(key, value) {
-  state.settings[key] = value;
-  saveState();
+export function resetStore() {
+  const next = blank();
+  saveStore(next);
+  return next;
 }
 
-export function getSetting(key) {
-  return state.settings[key];
+export function exportJson(store) {
+  return JSON.stringify(store, null, 2);
 }
 
-export function earnedList() {
-  return Object.entries(state.earned)
-    .map(([id, at]) => ({ id, at }))
-    .sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0));
-}
-
-export function exportState() {
-  return JSON.stringify({ app: "sunset-platinum", version: 1, exportedAt: new Date().toISOString(), ...state }, null, 2);
-}
-
-export function importState(text) {
-  const parsed = JSON.parse(text);
-  if (!parsed || typeof parsed !== "object" || typeof parsed.earned !== "object") {
-    throw new Error("That file is not a Sunset Platinum export.");
-  }
-  const earned = {};
-  for (const [id, at] of Object.entries(parsed.earned)) {
-    if (typeof id === "string" && typeof at === "string") earned[id] = at;
-  }
-  state = {
-    earned,
-    settings: { ...blankState().settings, ...(parsed.settings || {}) },
+export function importJson(text) {
+  const doc = JSON.parse(text);
+  if (!doc || typeof doc !== "object" || !doc.earned) throw new Error("not a progress file");
+  const next = {
+    earned: doc.earned,
+    history: Array.isArray(doc.history) ? doc.history : [],
+    settings: { ...blank().settings, ...(doc.settings || {}) },
   };
-  saveState();
-  return Object.keys(earned).length;
-}
-
-export function resetAll() {
-  state = blankState();
-  saveState();
+  saveStore(next);
+  return next;
 }

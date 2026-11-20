@@ -1,44 +1,39 @@
-// Trophy data: loads app/data/trophies.json (a file of this app, nothing over
-// the network) and offers the lookups the views share.
+// Loads the trophy file and gives the views one clean shape to work with.
 let cache = null;
-let sourceList = {};
 
 export async function loadTrophies() {
   if (cache) return cache;
   const res = await fetch("data/trophies.json");
-  if (!res.ok) throw new Error("trophies.json failed to load: " + res.status);
+  if (!res.ok) throw new Error("trophies.json did not load");
   const doc = await res.json();
-  sourceList = doc.sourceList || {};
-  cache = doc.trophies || doc;
+  cache = doc.trophies.map((t) => ({
+    id: t.id,
+    name: t.name,
+    description: t.description,
+    grade: t.grade,
+    hidden: Boolean(t.hidden),
+    kind: t.kind,
+    missable: Boolean(t.missable),
+    stage: t.stage,
+    count: typeof t.count === "number" ? t.count : null,
+    guide: t.guide,
+    sources: Array.isArray(t.sources) ? t.sources : [],
+  }));
   return cache;
 }
 
-export function allTrophies() {
-  return cache || [];
+export function byId(trophies, id) {
+  return trophies.find((t) => t.id === id) || null;
 }
 
-export function byId(id) {
-  return (cache || []).find((t) => t.id === id) || null;
+export function byKind(trophies, kind) {
+  return trophies.filter((t) => t.kind === kind);
 }
 
-export function gradeRank(grade) {
-  return { platinum: 0, gold: 1, silver: 2, bronze: 3 }[grade] ?? 4;
+export function byGrade(trophies, grade) {
+  return trophies.filter((t) => t.grade === grade);
 }
 
-export function sourceName(key) {
-  return (sourceList[key] && sourceList[key].name) || key;
-}
-
-export function sourceUrl(key) {
-  return (sourceList[key] && sourceList[key].url) || null;
-}
-
-export function sourceKeys() {
-  return Object.keys(sourceList);
-}
-
-// The official list, for the trophies check: every name the gate holds the
-// app to, in the order PlayStation lists them.
-export function officialNames() {
-  return (cache || []).map((t) => t.name);
+export function isStorySpoiler(t) {
+  return t.hidden && (t.kind === "story" || t.kind === "misc");
 }

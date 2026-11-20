@@ -1,35 +1,31 @@
-// Export: progress as a Markdown checklist (for notes, guides and forums)
-// and as JSON (for backup). Import reads the JSON back.
-import { GRADE_LABEL } from "./config.js";
-import { isEarned, earnedAt, getState } from "./store.js";
+// Exports the reader's progress as Markdown: earned trophies with their
+// guides, then what is still open, ordered by roadmap stage.
+import { GRADE_ORDER } from "./config.js";
 
-export function buildMarkdown(trophies) {
-  const state = getState();
-  const earned = trophies.filter((t) => isEarned(t.id));
+export function exportMarkdown(trophies, store) {
+  const earned = trophies.filter((t) => store.earned[t.id]);
+  const open = trophies.filter((t) => !store.earned[t.id]);
   const lines = [];
-  lines.push("# Sunset Platinum — GTA VI Trophy Progress");
+  lines.push("# Sunset Platinum — progress");
   lines.push("");
   lines.push(`Earned ${earned.length} of ${trophies.length} trophies.`);
   lines.push("");
-  for (const grade of ["platinum", "gold", "silver", "bronze"]) {
-    const group = trophies.filter((t) => t.grade === grade);
+  for (const grade of GRADE_ORDER) {
+    const group = earned.filter((t) => t.grade === grade);
     if (!group.length) continue;
-    lines.push(`## ${GRADE_LABEL[grade]}`);
-    lines.push("");
-    for (const t of group) {
-      const mark = isEarned(t.id) ? "x" : " ";
-      const when = earnedAt(t.id) ? ` (earned ${earnedAt(t.id).slice(0, 10)})` : "";
-      const target = t.count ? ` — ${t.count} needed` : "";
-      lines.push(`- [${mark}] **${t.name}** — ${t.description}${target}${when}`);
-    }
+    lines.push(`## ${grade} (${group.length})`);
+    for (const t of group) lines.push(`- [x] ${t.name} — ${t.description}`);
     lines.push("");
   }
-  lines.push("Made with Sunset Platinum, an offline GTA VI trophy guide and tracker.");
+  lines.push(`## Still open (${open.length})`);
+  const byStage = [...open].sort((a, b) => a.stage - b.stage || a.id - b.id);
+  for (const t of byStage) lines.push(`- [ ] ${t.name} (${t.grade}, stage ${t.stage}) — ${t.description}`);
+  lines.push("");
   return lines.join("\n");
 }
 
 export function download(filename, text, mime) {
-  const blob = new Blob([text], { type: mime || "text/plain;charset=utf-8" });
+  const blob = new Blob([text], { type: mime || "text/plain" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;

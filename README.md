@@ -1,45 +1,50 @@
-# Sunset Platinum — GTA VI Trophy Guide & Tracker
+# Sunset Platinum — GTA VI Trophy Guide
 
 [![make.fun · gta6-trophy-guide-01](https://make.fun/badge/gta6-trophy-guide-01.svg)](https://make.fun/bounty/gta6-trophy-guide-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-trophy-guide-01)
 [![rank](https://make.fun/badge/gta6-trophy-guide-01/Steveales-1122/gta6-trophy-guide-01/rank.svg)](https://make.fun/bounty/gta6-trophy-guide-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=gta6-trophy-guide-01)
 [![reward](https://make.fun/badge/gta6-trophy-guide-01/Steveales-1122/gta6-trophy-guide-01/reward.svg)](https://make.fun/bounty/gta6-trophy-guide-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-trophy-guide-01)
 
-An offline guide and tracker for all 55 trophies of Grand Theft Auto VI on PlayStation 5 — built for the [make.fun bounty](https://make.fun/bounty/gta6-trophy-guide-01).
+A complete, offline trophy guide and tracker for **Grand Theft Auto VI** on PlayStation 5 — all 55 trophies, with a roadmap, a 100% checklist, a missables guide, and a progress tracker that works entirely in your browser.
 
-## What it does
+## What it covers
 
-- **Checklist** — every trophy with its official name, description and grade; tick one off when it pops and progress saves in the browser (localStorage). Filters by kind (story, missable, collectibles, activities, online) and by earned / not earned, plus text search.
-- **Roadmap** — six stages to the Platinum, in the order to play them, each with its trophies and progress.
-- **Missables** — the one potentially missable trophy (Positive Mental Attitude, the balcony meditation in Chapter 1) with the exact moment to catch it.
-- **100% Stages** — the completion checklist behind A Long Road, with the numbers the game counts.
-- **Planner** — what is left, ordered by roadmap stage, with the missable one pinned first.
-- **What next?** — one suggestion at a time from what is still open.
-- **Stats** — earned by grade and by kind, plus trophy points.
+- **All 55 trophies** — 1 Platinum, 2 Gold, 6 Silver, 46 Bronze; 28 hidden, 1 potentially missable.
+- **The Platinum, "Vice Got a Price!"** — the road to it in six stages, from the story (Chapter 1 first) to the final cleanup.
+- **The one missable trophy** — Positive Mental Attitude (meditate at all 18 spots). Do the first one in Chapter 1: after the mission Down to Earth, find Lucia at Jason's house in the morning and accept her balcony invitation. It may disappear once Chapter 1 ends.
+- **100% completion** — A Long Road (Gold) follows the in-game 100% checklist under Progress, Stats. The thresholds are lenient (about 60% of true completion), so the hardest leftovers can be skipped.
+- **No online trophies** — every trophy is earnable solo. One playthrough, no mission replay, cheats disable trophies.
+- **Sources** — every trophy is sourced from Keeengamer, EGamers, PowerPyx, and GTABase, cross-checked against each other. Five hidden trophies are still unconfirmed (In The Beginning…, Capital Offense, Bad Luck, I Guess, The Truth Is Out There, Ten Pin) — the guide says so instead of guessing.
+
+## The tracker
+
+Open `app/index.html` (or run `node serve.ts` and visit the printed address). Everything is local:
+
+- **Checklist** — search, filter by kind/grade/earned, tick trophies off as they pop; progress is saved in your browser.
+- **Roadmap** — six stages in the order to play them, each with its trophies and your progress.
+- **100% Stages** — the four groups of the in-game 100% checklist, with the numbers the game counts.
+- **Missables** — the one missable trophy, plus the five still-unconfirmed hidden ones.
+- **Planner** — everything still open, ordered by roadmap stage, missable first.
+- **What next?** — one suggestion at a time.
+- **Stats** — earned by grade and kind, trophy points, overall progress.
 - **History** — every trophy you ticked off, in the order it landed.
-- **Settings** — spoiler hiding (story trophies read as "Hidden trophy" until earned), export progress as Markdown or JSON, import it back, reset.
+- **Settings** — a spoiler mode that masks hidden story trophies until you earn them, plus export/import of your progress (Markdown or JSON) and a reset.
 
-## How to run it
+Keyboard: `1`–`9` switch views, `/` focuses search, `h` toggles spoilers.
 
-```sh
-node serve.ts
-```
-
-Then open http://localhost:8080. No build step, no network: every file the app loads is under `app/`.
-
-## How to hand it in
+## Run it
 
 ```sh
-mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
+node serve.ts            # serves app/ on http://127.0.0.1:8123
+node main.ts             # writes the submission dossier to $MAKEFUN_OUTPUT_DIR
 ```
 
-`main.ts` copies `app/` and `screenshots/` to the output directory and writes `dossier.json` with the vendored make.fun library.
+`main.ts` uses only the Node standard library and the bundled `vendor/makefun-frontend.ts` helper. It reads the app and screenshots, writes `dossier.json`, and never touches the network.
 
-## Sources
+## Trophy facts
 
-Every guide is written for this entry, in our own words, and cites its sources beside each trophy. The official names and descriptions are shown as PlayStation publishes them.
+- 55 trophies: 1 Platinum, 2 Gold, 6 Silver, 46 Bronze.
+- 28 hidden (27 Bronze + 1 Gold — the final mission).
+- 1 potentially missable: Positive Mental Attitude.
+- ~200 hours for 100%, difficulty about 4/10.
 
-- [Push Square — GTA 6: Trophy Guide & Roadmap](https://www.pushsquare.com/guides/gta-6-trophy-guide-and-roadmap)
-- [Keeengamer — GTA 6 Trophy Guide & Platinum Roadmap](https://www.keengamer.com/articles/guides/gta-6-trophy-guide-platinum-roadmap-all-55-trophies/)
-- [EGamers.io — GTA 6 Trophy List](https://egamers.io/gta-6-trophy-list-all-55-trophies-and-achievements-plus-the-hardest-ones/)
-
-No Rockstar Games logo, official artwork, box art or screenshot of the game is used: the look is our own.
+Built for the [gta6-trophy-guide-01 bounty on make.fun](https://make.fun/bounty/gta6-trophy-guide-01).
