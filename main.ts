@@ -6,7 +6,7 @@
 // Outside the grader, MAKEFUN_OUTPUT_DIR stands in for /output:
 //   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
 import { buildDossier } from "./vendor/makefun-frontend.ts";
-import { cpSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -24,8 +24,15 @@ const caps = {
   app_path_max_bytes: 1000,
 };
 
-rmSync(outDir, { recursive: true, force: true });
+// Clear the output directory WITHOUT removing the directory itself: in the
+// grader /output is a mount whose parent directory is not writable by the
+// unprivileged user, so rmSync(outDir, { recursive: true }) fails with
+// EACCES when it tries to remove the directory itself. Only its contents
+// (a previous app/, screenshots/ or dossier.json) are cleared.
 mkdirSync(outDir, { recursive: true });
+for (const entry of readdirSync(outDir)) {
+  rmSync(join(outDir, entry), { recursive: true, force: true });
+}
 cpSync(join(repoRoot, "app"), join(outDir, "app"), { recursive: true });
 cpSync(join(repoRoot, "screenshots"), join(outDir, "screenshots"), { recursive: true });
 
