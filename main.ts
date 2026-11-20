@@ -1,41 +1,48 @@
-// Hands the guide in: copies app/ and screenshots/ from this repository
-// into the output directory and writes /output/dossier.json with the kit's
-// buildDossier. Runs twice with the same bytes: the copy is a plain
-// byte-for-byte copy and buildDossier is deterministic for the same input.
+// Sunset Platinum — a GTA 6 trophy guide entry (Node 22, standard library
+// only). The guide is this directory's app/ folder: plain static files a
+// browser opens at app/index.html (ES modules, CSS, no build step), offline:
+// it loads nothing over the network, and its trophy list and guides are
+// app/data/trophies.json. This program hands it in: it copies app/ and
+// screenshots/ from beside this file to /output and writes
+// /output/dossier.json, the summary the judge reads (your screenshots, the
+// first load's files and bytes, and your source), with the vendored make.fun
+// library. Leave vendor/makefun-frontend.ts as it is: the scorer requires
+// dossier.json to be byte for byte what its own copy writes.
 //
-// Outside the grader, MAKEFUN_OUTPUT_DIR stands in for /output:
+// Clearing /output: the grader runs this program with /output as a mount
+// whose parent is not writable by its unprivileged user, so removing the
+// mount itself fails. Clear only the contents of /output, never the
+// directory itself.
+//
+// Serve it locally with `node serve.ts`, then open http://localhost:8080.
+// Outside the grader's container, MAKEFUN_OUTPUT_DIR stands in for /output:
 //   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
-import { buildDossier } from "./vendor/makefun-frontend.ts";
-import { cpSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+
+import { cpSync, existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { buildDossier } from "./vendor/makefun-frontend.ts";
 
-const repoRoot = dirname(fileURLToPath(import.meta.url));
-const outDir = process.env.MAKEFUN_OUTPUT_DIR || "/output";
+const here = fileURLToPath(new URL(".", import.meta.url));
+const out = process.env.MAKEFUN_OUTPUT_DIR ?? "/output";
 
-// The caps the gate itself states: dossier text at most 160 KiB, at most
-// 4 screenshots of 256 KiB each, app/ at most 993 files and 48 MiB, and
-// no path longer than 1,000 bytes.
-const caps = {
-  text_max_bytes: 163840,
-  screenshots: { max: 4, max_bytes: 256 * 1024 },
-  app_max_files: 993,
-  app_max_bytes: 48 * 1024 * 1024,
-  app_path_max_bytes: 1000,
-};
-
-// Clear the output directory WITHOUT removing the directory itself: in the
-// grader /output is a mount whose parent directory is not writable by the
-// unprivileged user, so rmSync(outDir, { recursive: true }) fails with
-// EACCES when it tries to remove the directory itself. Only its contents
-// (a previous app/, screenshots/ or dossier.json) are cleared.
-mkdirSync(outDir, { recursive: true });
-for (const entry of readdirSync(outDir)) {
-  rmSync(join(outDir, entry), { recursive: true, force: true });
+// Clear the previous run's files without ever removing /output itself.
+mkdirSync(out, { recursive: true });
+for (const entry of readdirSync(out)) {
+  rmSync(join(out, entry), { recursive: true, force: true });
 }
-cpSync(join(repoRoot, "app"), join(outDir, "app"), { recursive: true });
-cpSync(join(repoRoot, "screenshots"), join(outDir, "screenshots"), { recursive: true });
+cpSync(join(here, "app"), join(out, "app"), { recursive: true });
+mkdirSync(join(out, "screenshots"), { recursive: true });
+if (existsSync(join(here, "screenshots"))) {
+  cpSync(join(here, "screenshots"), join(out, "screenshots"), { recursive: true });
+}
 
-const dossier = buildDossier(outDir, caps);
-writeFileSync(join(outDir, "dossier.json"), dossier);
-console.log("Wrote " + join(outDir, "dossier.json") + " (" + dossier.length + " bytes)");
+// The scorer's own caps (reference/gate.json): only text_max_bytes shapes the
+// bytes; the others refuse an entry the scorer would refuse (more than 4
+// screenshots or one over 256 KiB; more than 993 files and directories in
+// app/ or 48 MiB of app files: app/ counts beside /output's own 1000-entry
+// cap, its screenshots/ and dossier.json).
+writeFileSync(
+  join(out, "dossier.json"),
+  buildDossier(out, { text_max_bytes: 163840, screenshots: { max: 4, max_bytes: 262144 }, app_max_files: 993, app_max_bytes: 50331648 }),
+);

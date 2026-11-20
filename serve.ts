@@ -1,15 +1,15 @@
-// Serves app/ on http://localhost:8080 for trying the guide in a desktop
-// browser. Static files only, no build step, no network at run time.
-//   node serve.ts
+// Serve the guide locally for trying it out: static files from app/ at
+// http://localhost:8080. Standard library only, no dependencies.
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
-import { dirname, extname, join, normalize, resolve } from "node:path";
+import { join, extname, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const appDir = resolve(dirname(fileURLToPath(import.meta.url)), "app");
+const here = fileURLToPath(new URL(".", import.meta.url));
+const root = join(here, "app");
 const port = Number(process.env.PORT || 8080);
 
-const types = {
+const MIME = {
   ".html": "text/html; charset=utf-8",
   ".css": "text/css; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
@@ -23,22 +23,23 @@ const types = {
 
 const server = createServer(async (req, res) => {
   try {
-    const path = normalize(join(appDir, decodeURIComponent((req.url || "/").split("?")[0])));
-    const file = path.endsWith("/") || path === appDir ? join(path, "index.html") : path;
-    if (!file.startsWith(appDir)) {
+    const url = new URL(req.url || "/", "http://localhost");
+    let path = normalize(join(root, decodeURIComponent(url.pathname)));
+    if (!path.startsWith(root)) {
       res.writeHead(403);
       res.end("Forbidden");
       return;
     }
-    const body = await readFile(file);
-    res.writeHead(200, { "content-type": types[extname(file)] || "application/octet-stream" });
-    res.end(body);
+    if (path.endsWith("/")) path = join(path, "index.html");
+    const data = await readFile(path);
+    res.writeHead(200, { "content-type": MIME[extname(path)] || "application/octet-stream" });
+    res.end(data);
   } catch (err) {
-    res.writeHead(404);
+    res.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
     res.end("Not found");
   }
 });
 
 server.listen(port, () => {
-  console.log("Sunset Platinum at http://localhost:" + port);
+  console.log(`Sunset Platinum guide at http://localhost:${port}`);
 });

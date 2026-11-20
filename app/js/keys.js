@@ -1,34 +1,22 @@
-// Keyboard shortcuts for the whole app. They never fire while the player
-// is typing in a search box, a textarea or any other input.
-export function installShortcuts(app) {
+// Keyboard shortcuts for the guide. Typing in a field never triggers them.
+export function bindShortcuts(handlers) {
   document.addEventListener("keydown", (event) => {
-    const tag = (event.target && event.target.tagName) || "";
-    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || event.target.isContentEditable) {
-      return;
-    }
-    if (event.metaKey || event.ctrlKey || event.altKey) return;
-    const key = event.key;
-    if (key === "/") {
+    const target = event.target;
+    const typing = target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable);
+    if (event.key === "/" && !typing) {
       event.preventDefault();
-      app.focusSearch();
+      handlers.focusSearch && handlers.focusSearch();
       return;
     }
-    if (key === "?") {
-      event.preventDefault();
-      app.showHelp();
-      return;
-    }
-    if (key === "e" || key === "E") {
-      event.preventDefault();
-      app.downloadExport();
-      return;
-    }
-    if (key >= "1" && key <= "9") {
-      const view = app.viewByKey(key);
-      if (view) {
-        event.preventDefault();
-        app.go(view);
-      }
+    if (typing || event.metaKey || event.ctrlKey || event.altKey) return;
+    if (event.key === "s" || event.key === "S") {
+      handlers.toggleSpoilers && handlers.toggleSpoilers();
+    } else if (event.key === "e" || event.key === "E") {
+      handlers.exportMarkdown && handlers.exportMarkdown();
+    } else if (event.key === "?") {
+      handlers.showShortcuts && handlers.showShortcuts();
+    } else if (/^[1-9]$/.test(event.key)) {
+      handlers.goView && handlers.goView(Number(event.key) - 1);
     }
   });
 }

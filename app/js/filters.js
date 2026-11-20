@@ -1,43 +1,50 @@
-// Checklist filtering: kind, earned state, and the search box.
-// Pure functions over the trophy list, so the views stay thin.
-export function blankFilter() {
-  return { kind: "all", show: "all", query: "" };
+// Filtering and spoiler handling: one place where the checklist, the stats
+// and the picker all agree on what "visible" means.
+import { FILTER_DEFS } from "./config.js";
+import { isEarned } from "./store.js";
+
+export function filterDef(id) {
+  return FILTER_DEFS.find((f) => f.id === id) || FILTER_DEFS[0];
 }
 
-// show is one of "all" | "earned" | "todo".
-export function applyFilter(trophies, state, filter) {
-  const q = filter.query.trim().toLowerCase();
-  let list = trophies;
-  if (filter.kind === "missable") {
-    list = list.filter((t) => t.missable);
-  } else if (filter.kind === "online") {
-    list = [];
-  } else if (filter.kind !== "all") {
-    list = list.filter((t) => t.kind === filter.kind);
-  }
-  if (filter.show === "earned") {
-    list = list.filter((t) => state.earned[t.id]);
-  } else if (filter.show === "todo") {
-    list = list.filter((t) => !state.earned[t.id]);
-  }
-  if (q) {
-    list = list.filter((t) => {
-      const hay = [t.name, t.desc, t.guide, t.kind, t.grade].join(" ").toLowerCase();
-      return hay.includes(q);
-    });
-  }
-  return list;
+// A hidden trophy stays hidden while spoilers are on and it is not earned:
+// its name and description read as "Hidden trophy" until then.
+export function isMasked(trophy, state) {
+  if (!trophy.hidden) return false;
+  if (!state.settings.spoilers) return false;
+  return !isEarned(trophy.id);
 }
 
-// Progress inside one filtered list, for the "x of y" line above it.
-export function filterProgress(trophies, state, filter) {
-  const list = applyFilter(trophies, state, filter);
-  const done = list.filter((t) => state.earned[t.id]).length;
-  return { done, total: list.length };
+export function displayName(trophy, state) {
+  return isMasked(trophy, state) ? "Hidden trophy" : trophy.name;
 }
 
-// The next unearned trophy of a kind, for the planner's "do this next" line.
-export function nextTodo(trophies, state, kind) {
-  const list = applyFilter(trophies, state, { kind, show: "todo", query: "" });
-  return list.length ? list[0] : null;
+export function displayDescription(trophy, state) {
+  return isMasked(trophy, state) ? "Earn it to reveal the name and description." : trophy.description;
+}
+
+export function applyFilters(trophies, state, opts) {
+  const { kind = "all", query = "", earned = "all", missableOnly = false } = opts || {};
+  const def = filterDef(kind);
+  const q = query.trim().toLowerCase();
+  return trophies.filter((t) => {
+    if (!def.match(t)) return false;
+    if (missableOnly && !t.missable) return false;
+    if (earned === "earned" && !isEarned(t.id)) return false;
+    if (earned === "unearned" && isEarned(t.id)) return false;
+    if (q) {
+      const hay = (t.name + " " + t.description + " " + t.guide + " " + t.kind).toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+}
+
+export function sortForChecklist(trophies) {
+  const rank = { platinum: 0, gold: 1, silver: 2, bronze: 3 };
+  return [...trophies].sort((a, b) => {
+    const r = (rank[a.grade] ?? 4) - (rank[b.grade] ?? 4);
+    if (r !== 0) return r;
+    return a.name.localeCompare(b.name);
+  });
 }
